@@ -1,3 +1,29 @@
+"""
+PSC Automation Suite Launcher
+=============================
+
+This module serves as the primary entry point for the ALSU-PSC Calibration
+and Functional Test Suite. It coordinates the high-level execution flow
+by managing shared session state and user configuration.
+
+The launcher facilitates:
+- **Execution Mode Selection**: Allows operators to run calibration,
+  functional testing, or both in a single session.
+- **Session Management**: Initializes a shared `DUT` (Device Under Test)
+  instance to anchor project paths and perform hardware discovery.
+- **Dependency Injection**: Captures hardware identifiers and model
+  specifications once, passing them into downstream sub-suites to
+  prevent redundant user prompts.
+
+Workflow:
+    1. Prompt user for execution mode (Cal/Test/Both).
+    2. Initialize `DUT` object to resolve project-relative paths.
+    3. Prompt for shipment/hardware identifiers via `dut.prompt_inputs()`.
+    4. If Calibration is selected, retrieve the specific `PSCModel`
+       configuration.
+    5. Execute selected suites using the shared `DUT` and `config_instance`.
+"""
+
 from Cal.cal_main import run_calibration_suite
 from Test.test_main import run_psc_test_suite
 from Common.initialize_dut import DUT
@@ -41,7 +67,23 @@ def prompt_execution_mode():
                 )
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Coordinates the primary execution flow for the PSC automation suite.
+
+    This function serves as the central orchestrator for the application
+    session. It performs the following sequence:
+    1.  Prompts the operator to select the execution mode (Calibration,
+        Functional Testing, or both).
+    2.  Instantiates the shared DUT (Device Under Test) object, which
+        anchors project-relative file paths and queries hardware
+        configuration via EPICS.
+    3.  Collects operator inputs and discovery data once to establish
+        a single source of truth for the session.
+    4.  Injects the shared DUT and PSCModel configuration into the
+        selected sub-suites (Calibration and/or Testing) to ensure
+        data consistency and eliminate redundant prompts.
+    """
     cal, test = prompt_execution_mode()
 
     dut = DUT()
@@ -57,3 +99,7 @@ if __name__ == "__main__":
     if test:
         print("Beginning functional test...")
         run_psc_test_suite(dut)
+
+
+if __name__ == "__main__":
+    main()

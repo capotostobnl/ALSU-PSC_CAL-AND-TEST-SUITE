@@ -58,6 +58,9 @@ ALSU-PSC_CAL-AND-TEST-SUITE/
     pip install -r Common/requirements.txt
     ```
 
+* **FOFB Tests**
+    For testing of Fast PSC's FOFB SFPs, you must compile-in-place the caen_fast_genpacket.c application. This executable binary is called by the shell script, which is called by the fofb_test.py module
+
 ### Path Anchoring
 The application is designed to be portable. It dynamically resolves the project root using `os.path.abspath(__file__)` within the `Common/initialize_dut.py` module. You can move the entire project folder to any location on the system without breaking file paths.
 
@@ -92,3 +95,7 @@ The `DUT` class in `Common/initialize_dut.py` serves as the shared session manag
 
 ### Calibration Logic
 Calibration constants are computed using linear analysis ($y = mx + b$) based on high-precision DMM measurements and applied directly to the PSC internal registers via EPICS.
+
+
+### For More Information...
+For more information, refer to the README in the Test and Cal directories, for more specific information regarding the specific applications. 

@@ -16,28 +16,34 @@ The system integrates:
 ## **Repository Structure**
 
 ```
-├── main.py                          # Top-level test runner (Entry Point)
-├── initialize_dut.py                # DUT Config: Serial numbers, PV prefixes, directory logic
-├── report_generator.py              # ReportLab PDF engine, context managers, and styling
-├── psc_models.py                    # Data models representing PSC states/signals
-│
-├── EPICS_Adapters/                  # Drivers for Hardware Communication
-│   ├── ate_epics.py                 # Driver: Robust adapter for ATE Tester IOC
-│   └── psc_epics.py                 # Driver: Adapter for PSC IOC (waveforms, setpoints)
-│
-├── Functional_Tests/                # Individual Test Modules
-│   ├── ate_fault_tests.py           # Hardware Interlock Validation (FLT1/2/Spare/DCCT)
-│   ├── evr_timing_test.py           # EVR 1Hz Timestamp monotonicity check
-│   ├── fofb_test.py                 # FOFB Integration: UDP packet capture & HDF5 logging
-│   ├── jump_test.py                 # Transient Response Analysis (Step response, Settling)
-│   ├── ps_regulation_test.py        # DAC Loopback & Regulation verification
-│   ├── smooth_ramp_test.py          # Ramp Tracking & Stability Analysis
-│   ├── caen_fast_genpacket.c        # Low-level UDP packet generator (C source)
-│   └── caen_fast_genpacket_loop_inf.sh  # Shell script wrapper for continuous packet generation
-│
-├── ate_init.py                      # Initialization sequence (Safety defaults, Gain setup)
-├── requirements.txt                 # Python dependencies
-└── README.md                        # Project documentation
+ALSU-PSC_CAL-AND-TEST-SUITE/
+├── Launcher.py             # Main entry point for the application
+├── Cal/                    # Calibration-specific logic and instruments
+│   ├── cal_main.py         # Primary calibration orchestration
+│   └── Instruments/        # Driver support for DMMs (HP 3458A)
+│     ├── hp_3458a.py                  #  Driver for HP 3458A DMM
+│     └── keithley_2401.py             #  Driver for Keithley 2401 SMU (No longer used in current procedure)
+├── Common/                 # Shared utilities and hardware adapters
+│   ├── initialize_dut.py   # DUT class (Session management & Path anchoring)
+│   ├── psc_models.py       # Registry of PSC hardware specifications
+│   └── EPICS_Adapters/     # Low-level EPICS communication layers
+      ├── ate_epics.py                 # Driver: Robust adapter for ATE Tester IOC
+      └── psc_epics.py                 # Driver: Adapter for PSC IOC (waveforms, setpoints)
+├── Test/                   # Functional verification suite
+│   ├── main.py             # Primary test orchestration
+│   └── Functional_Tests/   # Specific test modules (Regulation, Ramp, etc.)
+│     ├── ate_fault_tests.py           # Hardware Interlock Validation (FLT1/2/Spare/DCCT)
+│     ├── evr_timing_test.py           # EVR 1Hz Timestamp monotonicity check
+│     ├── fofb_test.py                 # FOFB Integration: UDP packet capture & HDF5 logging
+│     ├── jump_test.py                 # Transient Response Analysis (Step response, Settling)
+│     ├── ps_regulation_test.py        # DAC Loopback & Regulation verification
+│     ├── smooth_ramp_test.py          # Ramp Tracking & Stability Analysis
+│     ├── caen_fast_genpacket.c        # Low-level UDP packet generator (C source)
+│     └── caen_fast_genpacket_loop_inf.sh  # Shell script wrapper for continuous packet generation
+└── Test_And_Cal_Data/      # Unified data repository
+    ├── Cal_Reports/        # Auto-generated calibration PDFs
+    ├── Test_Reports/       # Auto-generated functional test PDFs
+    └── Raw_Logs/           # Diagnostic raw data indexed by Shipment ID
 ```
 
 ---
