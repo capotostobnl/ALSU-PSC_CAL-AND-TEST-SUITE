@@ -105,7 +105,7 @@ def log_run_header(
         report_obj: CalibrationReport
         ):
     """Logs the channel start information."""
-    msg = (f"PSCtest:Chan{chan}\n"
+    msg = (f"Chan{chan}\n"
            f"Burden resistor = {burden:3.4f}\n\n"
            "Measuring initial gains and offsets")
     print(msg)

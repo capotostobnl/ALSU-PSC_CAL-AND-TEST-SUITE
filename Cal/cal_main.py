@@ -49,18 +49,20 @@ from Cal.calibration_utils import (
 
 
 if TYPE_CHECKING:
-    from Common.psc_models import PSCConfig
+    from Common.psc_models import PSCModel
 
 
 def calibrate_channel(
     dut: DUT,
     ate: ATE,
     dmm: HP3458A,
-    config: PSCConfig,
+    config: PSCModel,
     report: CalibrationReport,
     chan: int
 ) -> None:
     """Executes the full calibration for a single channel."""
+
+    params = config.calibration_parameters
 
     # 1. Reset Hardware for Test
     for chan_dex in range(1, dut.num_channels + 1):
@@ -76,12 +78,12 @@ def calibrate_channel(
     sleep(1)
 
     # 3. Calculate Limits
-    current_fs = config.get_current_full_scale(chan)
-    burden = getattr(config.burden_resistors, f"ch{chan}")
-    p_scale = config.get_p_scale_factor(chan)
+    current_fs = config.calc.get_current_full_scale(chan)
+    burden = params.burden_resistors.get(chan - 1)
+    p_scale = config.calc.get_p_scale_factor(chan)
 
-    zero_sp = -1.0 / config.ndcct
-    sp0 = config.sp0
+    zero_sp = -1.0 / params.ndcct
+    sp0 = params.sp0
     span_sp = -(float(round(current_fs * 0.9 * 1000) / 1000))
     sp1 = float(round(10 * p_scale * 0.9))
 
@@ -95,10 +97,10 @@ def calibrate_channel(
     print(f"{dut.pv_prefix}:Chan{chan} (Burden: {burden:.4f})")
 
     # 4. Calibration Loop
-    results = np.zeros((config.num_runs, 8))
+    results = np.zeros((params.num_runs, 8))
 
-    for run in range(config.num_runs):
-        is_last = run == config.num_runs - 1
+    for run in range(params.num_runs):
+        is_last = run == params.num_runs - 1
         print(f"\nRun #: {run + 1}")
         dut.psc.reset_gains_offsets(chan)
         log_run_header(chan, burden, report)
@@ -175,7 +177,7 @@ def run_calibration_suite(
     
     Args:
         dut_instance: A pre-configured DUT object. If None, prompts user.
-        config_instance: A pre-configured PSCConfig object. If None, prompts user.
+        config_instance: A pre-configured PSCModel object. If None, prompts user.
     """
 
     # Init Hardware
