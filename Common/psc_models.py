@@ -774,6 +774,120 @@ MODELS = {
                                  tolerance=0.05
                               )
                              ),
+
+    "BTA-Q12-A8-Q7-Q11": PSCModel(model_id="BTA-Q12-Q8-Q7-Q11",
+                             display_name="4CH-MSS-BTA-Q12-Q8-Q7-Q11",
+                             description="PSC-4CH-MSS-BTA-Q12-Q8-Q7-Q11",
+                             designation="4CH-MSS-BTA-Q12-Q8-Q7-Q11_",
+                             channels=4,
+
+
+                          #######################################################################
+                          #      Calibration                                                    #
+                          #######################################################################
+                          calibration_parameters=CalibrationParameters(
+                          ndcct=2000.0,
+                          burden_resistors=ChannelValues(ch1=8.0, ch2=8.0,
+                                                         ch3=6.0, ch4=6.79),
+
+                          ovc1_threshold=ChannelValues(ch1=225, ch2=225, ch3=300, ch4=265),
+                          ovc2_threshold=ChannelValues(ch1=225, ch2=225, ch3=300, ch4=265),
+                          ovv_threshold=ChannelValues(ch1=20, ch2=20, ch3=30, ch4=30),
+                          ),
+
+                          psc_scale_factors= PSCScaleFactors(
+                                sf_vout=ChannelValues(ch1=-2, ch2=-2, ch3=-3, ch4=-3),
+                                sf_spare=ChannelValues(ch1=-22.5, ch2=-22.5, ch3=-30, ch4=-26.5),
+                          ),
+                          #######################################################################
+                          #      Test                                                           #
+                          #######################################################################
+                             reg=RegulatorTestParams(
+                                setpoints=(reg_pts := ChannelValues(ch1=112.5,
+                                                                    ch2=112.5,
+                                                                    ch3=150,
+                                                                    ch4=132.5)),
+                                settling_time=10),
+                             smooth=SmoothRampTestParams(
+                                 start_setpoints=ChannelValues(ch1=-5.9,
+                                                               ch2=-5.9,
+                                                               ch3=-5.9,
+                                                               ch4=-5.9),
+                                 end_setpoints=ChannelValues(ch1=5.9,
+                                                             ch2=5.9,
+                                                             ch3=5.9,
+                                                             ch4=5.9),
+                                 ramp_rate=ChannelValues(ch1=10,
+                                                         ch2=10,
+                                                         ch3=10,
+                                                         ch4=10),
+                                 settling_time=10,
+                                 tolerance=0.05),
+                             jump=JumpTestParams(
+                                 start_setpoints=reg_pts,
+                                 step_size=ChannelValues(ch1=0.05,
+                                                         ch2=0.05,
+                                                         ch3=0.05,
+                                                         ch4=0.05),
+                                 sample_window=500,
+                                 tolerance=0.05
+                              )
+                             ),
+
+    "BTA-Q16-Q15-Q9": PSCModel(model_id="BTA-Q16-Q15-Q9",
+                             display_name="4CH-MSS-BTA-Q16-Q15-Q9",
+                             description="PSC-4CH-MSS-BTA-Q16-Q15-Q9",
+                             designation="4CH-MSS-BTA-Q16-Q15-Q9_",
+                             channels=3,
+
+
+                          #######################################################################
+                          #      Calibration                                                    #
+                          #######################################################################
+                          calibration_parameters=CalibrationParameters(
+                          ndcct=1000.0,
+                          burden_resistors=ChannelValues(ch1=4.74, ch2=4.74,
+                                                         ch3=4.74         ),
+
+                          ovc1_threshold=ChannelValues(ch1=190, ch2=190, ch3=190),
+                          ovc2_threshold=ChannelValues(ch1=190, ch2=190, ch3=190),
+                          ovv_threshold=ChannelValues(ch1=20, ch2=20, ch3=20),
+                          ),
+
+                          psc_scale_factors= PSCScaleFactors(
+                                sf_vout=ChannelValues(ch1=-2, ch2=-2, ch3=-2),
+                                sf_spare=ChannelValues(ch1=-19.0, ch2=-19.0, ch3=-19.0),
+                          ),
+                          #######################################################################
+                          #      Test                                                           #
+                          #######################################################################
+                             reg=RegulatorTestParams(
+                                setpoints=(reg_pts := ChannelValues(ch1=95,
+                                                                    ch2=95,
+                                                                    ch3=95)),
+                                settling_time=10),
+                             smooth=SmoothRampTestParams(
+                                 start_setpoints=ChannelValues(ch1=-5.9,
+                                                               ch2=-5.9,
+                                                               ch3=-5.9),
+                                 end_setpoints=ChannelValues(ch1=5.9,
+                                                             ch2=5.9,
+                                                             ch3=5.9),
+                                 ramp_rate=ChannelValues(ch1=10,
+                                                         ch2=10,
+                                                         ch3=10),
+                                 settling_time=10,
+                                 tolerance=0.05),
+                             jump=JumpTestParams(
+                                 start_setpoints=reg_pts,
+                                 step_size=ChannelValues(ch1=0.05,
+                                                         ch2=0.05,
+                                                         ch3=0.05),
+                                 sample_window=500,
+                                 tolerance=0.05
+                              )
+                             ),
+
 }
 
 
