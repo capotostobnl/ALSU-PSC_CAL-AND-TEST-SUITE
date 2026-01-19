@@ -12,6 +12,19 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+# pylint: disable=wrong-import-position
+# flake8: noqa: E402
+###############################################################################
+#   Add outer directory to path, so app can find Common dir when run standalone
+if __name__ == "__main__":
+    import sys
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    if parent_dir not in sys.path:
+        sys.path.append(parent_dir)
+###############################################################################
+
 from Common.initialize_dut import DUT
 from Common.EPICS_Adapters.ate_epics import ATE
 from Common.psc_models import get_psc_model_from_user
@@ -33,6 +46,7 @@ from Cal.calibration_utils import (
     measure_testpoints,
     DMM_HIGH_RANGE_THRESHOLD
 )
+
 
 if TYPE_CHECKING:
     from Common.psc_models import PSCConfig
@@ -153,24 +167,46 @@ def calibrate_channel(
         report.next_page()
 
 
-def main() -> None:
-    """Entry point for the calibration script."""
+def run_calibration_suite(
+        dut_instance = None,
+        config_instance = None
+        ) -> None:
+    """Entry point for the calibration script.
+    
+    Args:
+        dut_instance: A pre-configured DUT object. If None, prompts user.
+        config_instance: A pre-configured PSCConfig object. If None, prompts user.
+    """
+
     # Init Hardware
     dmm = HP3458A()
     dmm.dmm_init()
 
-    dut = DUT()
-    dut.prompt_inputs()
-    dut.init()
+    if dut_instance is None:
+        # STANDALONE: Create and prompt
+        dut = DUT()
+        dut.prompt_inputs()
+        dut.init()
+    else:
+        # LAUNCHER: Use provided object
+        dut = dut_instance
+        # Ensure connection is active (safe to call multiple times if idempotent)
+        dut.init()
+
+    if config_instance is None:
+        # STANDALONE: Prompt
+        config = get_psc_model_from_user(dut.num_channels)
+    else:
+        # LAUNCHER: Use provided
+        config = config_instance
 
     ate = ATE(prefix="PSCtest:", ch_fmt="CH{ch}:")
     ate_init(ate, dut)
 
-    config = get_psc_model_from_user(dut.num_channels)
-
     # Init Report
-    pdf_filename = f"Calibration_{config.designation}SN{dut.psc_sn}.pdf"
-    pdf_path = os.path.join(dut.report_dir, pdf_filename)
+    pdf_filename = (f"Calibration_{config.designation}SN{dut.psc_sn}"
+                    f"_{dut.dir_timestamp}.pdf")
+    pdf_path = os.path.join(dut.cal_report_dir, pdf_filename)
 
     report = CalibrationReport(
         filename=pdf_path,
@@ -189,4 +225,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    run_calibration_suite(dut_instance=None, config_instance=None)

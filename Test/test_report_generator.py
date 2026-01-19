@@ -196,9 +196,9 @@ def start_report(dut: DUT) -> tuple:
               elements added.
             - The absolute file path to the target PDF file.
     """
-    base_dir = dut.report_dir
+
     pdf_name = _make_filename(dut)
-    pdf_path = os.path.abspath(os.path.join(base_dir, pdf_name))
+    pdf_path = os.path.join(dut.test_report_dir, pdf_name)
 
     ctx = _create_context(pdf_path)
 

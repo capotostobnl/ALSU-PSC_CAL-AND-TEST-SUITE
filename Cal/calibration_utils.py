@@ -9,7 +9,8 @@ from time import sleep
 from typing import TYPE_CHECKING
 
 # IMPORTS: Get the data structure from the analysis module
-from cal_analysis import TestPoint
+
+from Cal.cal_analysis import TestPoint
 
 if TYPE_CHECKING:
     from Common.initialize_dut import DUT

@@ -292,6 +292,7 @@ MODELS = {
     "ABEND-QFA": PSCModel(model_id="ABEND-QFA",
                           display_name="ABEND QFA - R3 2Ch",
                           description="PSC-2CH-HSS-AR-Abend-QFA",
+                          designation="2CH-HSS-AR-ABend-QFA_",
                           channels=2,
 
                           #####################################################################

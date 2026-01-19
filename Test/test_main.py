@@ -2,7 +2,21 @@
 
 M. Capotosto 11/11/2025
 """
-# from time import sleep
+
+# pylint: disable=wrong-import-position
+# flake8: noqa: E402
+###############################################################################
+#   Add outer directory to path, so app can find Common dir when run standalone
+if __name__ == "__main__":
+    import os
+    import sys
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    if parent_dir not in sys.path:
+        sys.path.append(parent_dir)
+###############################################################################
+
 from Common.EPICS_Adapters.ate_epics import ATE
 from Common.initialize_dut import DUT
 from Test.test_report_generator import start_report, finalize_report, \
@@ -17,25 +31,38 @@ from Test.Functional_Tests.fofb_test import \
     fofb_daisy_packet_monotonic_test
 
 
-if __name__ == "__main__":
+def run_psc_test_suite(dut_instance=None):
+    """
+    Runs the full PSC test suite.
 
+    Args:
+        dut_instance (DUT, optional): A pre-configured DUT object.
+                                      If None, the script will prompt the user.
+    """
     ate = ATE(prefix="PSCtest:", ch_fmt="CH{ch}:")
 
-    ##############################################################
-    # Get user inputs...
-    ##############################################################
-    dut = DUT()  # Create DUT class instance
+    # ##############################################################
+    # Setup DUT (Device Under Test)
+    # ##############################################################
+    if dut_instance is None:
+        # STANDALONE MODE
+        # No DUT was passed in, so create one
+        print("--- Running in Standalone Mode ---")
+        dut = DUT()
+        dut.prompt_inputs()
+    else:
+        # CASE 2: LAUNCHER MODE
+        # The launcher passed us a DUT object ready to go.
+        dut = dut_instance
 
-    # Prompt the user for PSC Info
-    # Create Shipment directory, Report Gen Directory, and
-    # Raw Data directories for this test run.
-    dut.prompt_inputs()
+    # Initialize hardware connection (ensure this is safe to call twice
+    # if launcher did it)
     dut.init()
 
     ctx, pdf_path = start_report(dut)
 
-#   print("sleeping 20 minutes...")
-#   sleep(1200)
+    #   print("sleeping 20 minutes...")
+    #   sleep(1200)
     evr_timing_test(dut, ctx)
     ate_init(ate, dut)
 
@@ -69,4 +96,8 @@ if __name__ == "__main__":
         fofb_daisy_packet_monotonic_test(dut, ctx)
 
     finalize_report(ctx)
-    print("Test complete! See folder for report.")
+    print(f"Test complete! See folder for report: {pdf_path}")
+
+
+if __name__ == "__main__":
+    run_psc_test_suite(dut_instance=None)
