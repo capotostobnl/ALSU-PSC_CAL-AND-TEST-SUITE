@@ -206,9 +206,9 @@ class PSCFaultThresholdsLimits:
     # -------------------------------------------------------------------------
     # Fault Thresholds
     # -------------------------------------------------------------------------
-    ovc1_threshold: ChannelValues
-    ovc2_threshold: ChannelValues
-    ovv_threshold: ChannelValues
+    ovc1_threshold: ChannelValues = field(default_factory=lambda: ChannelValues(0, 0))
+    ovc2_threshold: ChannelValues = field(default_factory=lambda: ChannelValues(0, 0))
+    ovv_threshold: ChannelValues = field(default_factory=lambda: ChannelValues(0, 0))
     err1_threshold: float = 10
     err2_threshold: float = 10
     ignd_threshold: float = 10
@@ -265,9 +265,9 @@ class PSCScaleFactors:
 
     sf_ramp_rate: float = 4.0
     sf_dcct_scale: float | None = None  # Will use p_scale_factor if None
-    sf_vout: ChannelValues
+    sf_vout: ChannelValues = field(default_factory=lambda: ChannelValues(0.0, 0.0))
     sf_ignd: float = 1.0
-    sf_spare: ChannelValues
+    sf_spare: ChannelValues = field(default_factory=lambda: ChannelValues(0.0, 0.0))
     sf_regulator: float = 1.0
     sf_error: float = 1.0
 
