@@ -1,5 +1,5 @@
 from Cal.cal_main import run_calibration_suite
-from Test.main import run_psc_test_suite
+from Test.test_main import run_psc_test_suite
 from Common.initialize_dut import DUT
 from Common.psc_models import get_psc_model_from_user
 

@@ -1,9 +1,9 @@
 # ALSU-PSC Calibration and Functional Test Suite
 
-A comprehensive software suite for the automated calibration and functional verification of Power Supply Controllers (PSC) used in High Energy Physics research.
+A comprehensive software suite for the automated calibration and functional verification of Power Supply Controllers (PSC)
 
 ## 🚀 Project Overview
-This application provides a unified interface to calibrate and test PSC units. It utilizes EPICS (Experimental Physics and Industrial Control System) to interface with hardware, captures high-precision measurements via HP 3458A DMMs, and generates comprehensive PDF reports for data auditing.
+This application provides a unified interface to calibrate and test PSC units. It utilizes EPICS (Experimental Physics and Industrial Control System) to interface with hardware, captures high-precision measurements via HP 3458A DMMs, and generates comprehensive PDF reports.
 
 ### Key Features
 * **Unified Launcher:** Single entry point for selecting execution modes (Calibration, Functional Testing, or both).
@@ -74,7 +74,7 @@ python Launcher.py
 
 ### The DUT (Device Under Test) Object
 The `DUT` class in `Common/initialize_dut.py` serves as the shared session manager. It handles:
-* **Lazy Properties**: `cal_report_dir` and `test_report_dir` use Python `@property` decorators to ensure folders are only created on your hard drive when a report is actually generated.
+* **Lazy Properties**: `cal_report_dir` and `test_report_dir` use Python `@property` decorators to ensure folders are only created when a report is actually generated.
 * **Session Persistence**: Operator inputs such as Serial Number and Shipment ID are captured once and shared across all sub-modules.
 
 
