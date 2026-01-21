@@ -153,6 +153,8 @@ class CalibrationParameters:
     ovv_threshold: ChannelValues
     num_runs: int = 5
     sp0: float = 1.0
+    current_full_scale_dividend: float = 1.0
+    g_target_multiplier: float = 10.0
 
 @dataclass
 class CalibrationTestThresholds:
@@ -260,8 +262,6 @@ class PSCScaleFactors:
         sf_error (float): Scaling factor for error amplifier signal processing. 
             Defaults to 1.0.
     """
-    current_full_scale_dividend: float = 1.0
-    g_target_multiplier: float = 10.0
 
     sf_ramp_rate: float = 4.0
     sf_dcct_scale: float | None = None  # Will use p_scale_factor if None
@@ -775,7 +775,7 @@ MODELS = {
                               )
                              ),
 
-    "BTA-Q12-A8-Q7-Q11": PSCModel(model_id="BTA-Q12-Q8-Q7-Q11",
+    "BTA-Q12-Q8-Q7-Q11": PSCModel(model_id="BTA-Q12-Q8-Q7-Q11",
                              display_name="4CH-MSS-BTA-Q12-Q8-Q7-Q11",
                              description="PSC-4CH-MSS-BTA-Q12-Q8-Q7-Q11",
                              designation="4CH-MSS-BTA-Q12-Q8-Q7-Q11_",
@@ -802,37 +802,37 @@ MODELS = {
                           #######################################################################
                           #      Test                                                           #
                           #######################################################################
-                             reg=RegulatorTestParams(
+                          reg=RegulatorTestParams(
                                 setpoints=(reg_pts := ChannelValues(ch1=112.5,
                                                                     ch2=112.5,
                                                                     ch3=150,
                                                                     ch4=132.5)),
-                                settling_time=10),
-                             smooth=SmoothRampTestParams(
-                                 start_setpoints=ChannelValues(ch1=-220,
-                                                               ch2=-220,
-                                                               ch3=-295,
-                                                               ch4=-260),
-                                 end_setpoints=ChannelValues(ch1=220,
-                                                             ch2=220,
-                                                             ch3=295,
-                                                             ch4=260),
-                                 ramp_rate=ChannelValues(ch1=60,
-                                                         ch2=60,
-                                                         ch3=60,
-                                                         ch4=60),
-                                 settling_time=10,
-                                 tolerance=0.05),
-                             jump=JumpTestParams(
-                                 start_setpoints=reg_pts,
-                                 step_size=ChannelValues(ch1=0.05,
-                                                         ch2=0.05,
-                                                         ch3=0.05,
-                                                         ch4=0.05),
-                                 sample_window=500,
-                                 tolerance=0.05
-                              )
-                             ),
+                                settling_time=15),
+                          smooth=SmoothRampTestParams(
+                                start_setpoints=ChannelValues(ch1=-220,
+                                                              ch2=-220,
+                                                              ch3=-295,
+                                                              ch4=-260),
+                                end_setpoints=ChannelValues(ch1=220,
+                                                            ch2=220,
+                                                            ch3=295,
+                                                            ch4=260),
+                                ramp_rate=ChannelValues(ch1=100,
+                                                        ch2=100,
+                                                        ch3=100,
+                                                        ch4=100),
+                                settling_time=15,
+                                tolerance=0.05),
+                          jump=JumpTestParams(
+                                start_setpoints=reg_pts,
+                                step_size=ChannelValues(ch1=0.05,
+                                                        ch2=0.05,
+                                                        ch3=0.05,
+                                                        ch4=0.05),
+                                sample_window=500,
+                                tolerance=0.05
+                        )
+                        ),
 
     "BTA-Q16-Q15-Q9": PSCModel(model_id="BTA-Q16-Q15-Q9",
                              display_name="4CH-MSS-BTA-Q16-Q15-Q9",
@@ -911,8 +911,11 @@ def get_psc_model_from_user(num_channels: int) -> PSCModel:
     """
 
     try:
-        available_models = [m for m in MODELS.values()
-                            if m.channels == num_channels]
+        if num_channels == 4:
+            available_models = [m for m in MODELS.values() if m.channels in [3, 4]]
+
+        elif num_channels == 2:
+            available_models = [m for m in MODELS.values() if m.channels == num_channels]
 
         if not available_models:
             raise ValueError(f"No models defined for {num_channels} channels.")

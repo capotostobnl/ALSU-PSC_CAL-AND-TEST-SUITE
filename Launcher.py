@@ -89,12 +89,10 @@ def main():
     dut = DUT()
     dut.prompt_inputs()
 
-    config_instance = None
 
     if cal:
-        config_instance = get_psc_model_from_user(dut.num_channels)
         print("Beginning Calibration...")
-        run_calibration_suite(dut, config_instance)
+        run_calibration_suite(dut)
 
     if test:
         print("Beginning functional test...")
