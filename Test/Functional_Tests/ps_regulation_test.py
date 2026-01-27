@@ -76,7 +76,7 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
 
     dut.psc.set_dac_setpt(chan, 0)
 
-    for i in range(1, dut.num_channels+1):
+    for i in range(1, dut.model.channels+1):
         dut.psc.set_fault_mask_all(chan, 0)
         dut.psc.set_power_on1(i, 1)
         dut.psc.set_enable_on2(i, 1)
@@ -102,6 +102,25 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
     samples = dut.model.reg.num_samples
     interval = dut.model.reg.sample_interval
     tolerance = dut.model.reg.tolerance
+
+    run = 0
+    sp_sat = (setpoint - 0.01) < dut.psc.get_dac(chan) < (setpoint + 0.01)
+
+    while run < 6: 
+        
+        if not sp_sat:
+            print(f"DAC RB Not satisfied to SP yet...sleeping 5s...Attempt {run+1}")
+            run += 1
+            dut.psc.set_dac_setpt(chan, setpoint)
+            sleep(5)
+        elif sp_sat:
+            print("SP Satisfied...continuing...")
+            break
+    run = 0
+
+            
+
+
 
     # Collect 1 minute of data:
     collection_time = samples * interval

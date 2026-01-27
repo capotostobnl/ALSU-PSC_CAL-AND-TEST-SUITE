@@ -45,8 +45,6 @@ def run_psc_test_suite(dut_instance=None):
     # Setup DUT (Device Under Test)
     # ##############################################################
     if dut_instance is None:
-        # STANDALONE MODE
-        # No DUT was passed in, so create one
         print("--- Running in Standalone Mode ---")
         dut = DUT()
         dut.prompt_inputs()
@@ -55,23 +53,21 @@ def run_psc_test_suite(dut_instance=None):
         # The launcher passed us a DUT object ready to go.
         dut = dut_instance
 
-    # Initialize hardware connection (ensure this is safe to call twice
-    # if launcher did it)
+    # Initialize hardware connection 
     dut.init()
 
     ctx, pdf_path = start_report(dut)
 
-    #   print("sleeping 20 minutes...")
-    #   sleep(1200)
-    #evr_timing_test(dut, ctx)
+
+    evr_timing_test(dut, ctx)
     ate_init(ate, dut)
 
-    for chan in range(1, dut.num_channels+1):
+    for chan in range(1, dut.model.channels+1):
         with channel_section(ctx, chan) as sec:
             print("\n\n*******************************************"
                   f"\nBeginning Channel {chan} ATE Fault Tests..."
                   "\n*******************************************")
-            #ate_fault_tests(dut, ate, sec, chan)
+            ate_fault_tests(dut, ate, sec, chan)
 
             print("\n\n*******************************************"
                   f"\nBeginning Channel {chan} Regulation Tests..."

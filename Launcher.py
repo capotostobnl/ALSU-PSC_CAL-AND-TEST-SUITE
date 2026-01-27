@@ -23,7 +23,7 @@ Workflow:
        configuration.
     5. Execute selected suites using the shared `DUT` and `config_instance`.
 """
-
+import time
 from Cal.cal_main import run_calibration_suite
 from Test.test_main import run_psc_test_suite
 from Common.initialize_dut import DUT
@@ -88,8 +88,31 @@ def main():
 
     dut = DUT()
     dut.prompt_inputs()
+    sleep_option = input("Sleep 20 minutes?")
+    """if sleep_option == "True" or 1:
+        sleep_option = True
+    elif sleep_option == "False" or 0:
+        sleep_option = False
 
+    else: 
+        print("Enter True, 1, False, or 0")
 
+    if sleep_option:
+        print(f"Sleeping 20 Minutes")
+        total_seconds = (20*60)
+        print(f"Minutes remaining: {total_seconds/60}")
+        while total_seconds >= 0:
+                mins = total_seconds // 60
+                secs = total_seconds % 60
+                
+                timer_display = f"{mins:02d}:{secs:02d}"
+                
+                print(f"Time remaining: {timer_display}")
+                
+                time.sleep(1)
+                total_seconds -= 1
+    
+    """
     if cal:
         print("Beginning Calibration...")
         run_calibration_suite(dut)

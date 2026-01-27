@@ -134,7 +134,7 @@ def _cover_table(dut: DUT) -> Table:
         ["PSC Functional Test Results", 0],
         ["Power Supply Controller Configuration", 0],
         ["Serial Number", dut.psc_sn],
-        ["Number of Channels", dut.num_channels],
+        ["Number of Channels", dut.model.channels],
         ["Resolution", dut.resolution],
         ["Bandwidth", dut.bandwidth],
         ["Polarity", dut.polarity],

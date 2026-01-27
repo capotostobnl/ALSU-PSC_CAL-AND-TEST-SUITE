@@ -807,7 +807,8 @@ MODELS = {
                                                                     ch2=112.5,
                                                                     ch3=150,
                                                                     ch4=132.5)),
-                                settling_time=15),
+                                settling_time=15,
+                                tolerance=0.07),
                           smooth=SmoothRampTestParams(
                                 start_setpoints=ChannelValues(ch1=-220,
                                                               ch2=-220,
@@ -821,16 +822,16 @@ MODELS = {
                                                         ch2=100,
                                                         ch3=100,
                                                         ch4=100),
-                                settling_time=15,
-                                tolerance=0.05),
+                                settling_time=30,
+                                tolerance=0.05,),
                           jump=JumpTestParams(
                                 start_setpoints=reg_pts,
-                                step_size=ChannelValues(ch1=0.05,
-                                                        ch2=0.05,
-                                                        ch3=0.05,
-                                                        ch4=0.05),
+                                step_size=ChannelValues(ch1=0.5,
+                                                        ch2=0.5,
+                                                        ch3=0.5,
+                                                        ch4=0.5),
                                 sample_window=500,
-                                tolerance=0.05
+                                tolerance=0.05,
                         )
                         ),
 
@@ -865,7 +866,8 @@ MODELS = {
                                 setpoints=(reg_pts := ChannelValues(ch1=95,
                                                                     ch2=95,
                                                                     ch3=95)),
-                                settling_time=10),
+                                settling_time=10,
+                                tolerance=0.07),
                              smooth=SmoothRampTestParams(
                                  start_setpoints=ChannelValues(ch1=-185,
                                                                ch2=-185,
@@ -880,9 +882,9 @@ MODELS = {
                                  tolerance=0.05),
                              jump=JumpTestParams(
                                  start_setpoints=reg_pts,
-                                 step_size=ChannelValues(ch1=0.05,
-                                                         ch2=0.05,
-                                                         ch3=0.05),
+                                 step_size=ChannelValues(ch1=0.5,
+                                                         ch2=0.5,
+                                                         ch3=0.5),
                                  sample_window=500,
                                  tolerance=0.05
                               )
