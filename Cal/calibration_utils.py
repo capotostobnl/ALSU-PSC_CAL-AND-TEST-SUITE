@@ -28,15 +28,14 @@ DMM_HIGH_RANGE_THRESHOLD = 0.11
 
 def configure_channel_settings(
     dut: DUT,
-    psc_config: PSCModel,
     chan: int
 ) -> None:
     """Applies all scale factors and thresholds to the PSC."""
 
-    scales = psc_config.psc_scale_factors
-    faults = psc_config.psc_fault_thresholds_limits
+    scales = dut.model.psc_scale_factors
+    faults = dut.model.psc_fault_thresholds_limits
 
-    p_scale = psc_config.calc.get_p_scale_factor(chan)
+    p_scale = dut.model.calc.get_p_scale_factor(chan)
     dcct_val = (scales.sf_dcct_scale
                 if scales.sf_dcct_scale else p_scale)
 
@@ -85,12 +84,15 @@ def measure_testpoints(
     sp: float,
     chan: int,
     dmm_offset: float,
-    verbose: bool = False
+    verbose: bool = False,
+    verification: bool = False
 ) -> TestPoint:
     """
     Performs a single test point measurement with iterative DAC adjustment.
     """
-    ate_obj.set_cal_dac_w_os(current)
+    for _ in range(5):
+        ate_obj.set_cal_dac_w_os(current)
+        sleep(0.5)
 
     full_scale = psc_config.calc.get_current_full_scale(chan)
     p_scale = psc_config.calc.get_p_scale_factor(chan)
@@ -114,12 +116,22 @@ def measure_testpoints(
         psc_hw.set_dac_setpt(chan, sp)
         sleep(SETTLING_TIME_SEC)
         err = psc_hw.get_error_i(chan)
+
         iteration += 1
+    
+    if iteration == MAX_DAC_ITERATIONS+1:
+        print("Calibration failed. Could not null error after "
+              f"{MAX_DAC_ITERATIONS} attempts. Try again.")
+        #sys.exit()
 
+    rb = psc_config.calibration_parameters.burden_resistors.get(chan - 1)
     dmm_val = dmm_obj.read_value() - dmm_offset
+    ndcct = psc_config.calibration_parameters.ndcct
 
+    itest = dmm_val * ndcct
+    
     return TestPoint(
-        dmm_current=dmm_val * s_scale * p_scale,
+        dmm_current=itest,
         dac_setpoint=dac,
         dcct1=psc_hw.get_dcct1(chan),
         dcct2=psc_hw.get_dcct2(chan),

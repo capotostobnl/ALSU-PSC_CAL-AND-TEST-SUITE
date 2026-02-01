@@ -16,7 +16,7 @@ if __name__ == "__main__":
     if parent_dir not in sys.path:
         sys.path.append(parent_dir)
 ###############################################################################
-
+import os, subprocess
 from Common.EPICS_Adapters.ate_epics import ATE
 from Common.initialize_dut import DUT
 from Test.test_report_generator import start_report, finalize_report, \
@@ -45,8 +45,6 @@ def run_psc_test_suite(dut_instance=None):
     # Setup DUT (Device Under Test)
     # ##############################################################
     if dut_instance is None:
-        # STANDALONE MODE
-        # No DUT was passed in, so create one
         print("--- Running in Standalone Mode ---")
         dut = DUT()
         dut.prompt_inputs()
@@ -55,18 +53,16 @@ def run_psc_test_suite(dut_instance=None):
         # The launcher passed us a DUT object ready to go.
         dut = dut_instance
 
-    # Initialize hardware connection (ensure this is safe to call twice
-    # if launcher did it)
+    # Initialize hardware connection 
     dut.init()
 
     ctx, pdf_path = start_report(dut)
 
-    #   print("sleeping 20 minutes...")
-    #   sleep(1200)
+
     evr_timing_test(dut, ctx)
     ate_init(ate, dut)
 
-    for chan in range(1, dut.num_channels+1):
+    for chan in range(1, dut.model.channels+1):
         with channel_section(ctx, chan) as sec:
             print("\n\n*******************************************"
                   f"\nBeginning Channel {chan} ATE Fault Tests..."
@@ -97,6 +93,16 @@ def run_psc_test_suite(dut_instance=None):
 
     finalize_report(ctx)
     print(f"Test complete! See folder for report: {pdf_path}")
+    
+    try:
+        if os.environ.get("DISPLAY"):
+            subprocess.Popen(["xdg-open", pdf_path],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        else:
+            print("No DISPLAY found (headless/SSH). Not opening PDF automatically.")
+    except Exception as e:
+        print(f"Could not auto-open PDF: {e}")
 
 
 if __name__ == "__main__":

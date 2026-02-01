@@ -24,10 +24,10 @@ class CalibrationReport:
         self.x_margin = 0.75 * inch
         self.y_margin = 0.5 * inch  # Tighter top margin
         self.y = self.height - self.y_margin
-        self.line_height = 11       # Tighter line spacing
+        self.line_height = 12       # Tighter line spacing
 
         # Setup Font
-        self.c.setFont("Courier", 9)
+        self.c.setFont("Courier", 10)
 
         # Metadata
         self.designation = psc_designation
@@ -40,7 +40,7 @@ class CalibrationReport:
         limit = self.y_margin + (1.5 * inch)
         if self.y < (limit + (lines_needed * self.line_height)):
             self.c.showPage()
-            self.c.setFont("Courier", 9)
+            self.c.setFont("Courier", 10)
             self.y = self.height - self.y_margin
 
     def write_line(self, text: str):
@@ -71,7 +71,7 @@ class CalibrationReport:
         footer_y = 0.75 * inch  # Fixed position from bottom
 
         # Save current font state
-        self.c.setFont("Courier", 9)
+        self.c.setFont("Courier", 10)
 
         # 1. Signature Line (ONLY on the last page)
         if current_page == total_pages:
