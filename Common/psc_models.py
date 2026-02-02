@@ -1042,7 +1042,7 @@ MODELS = {
                                                                     ch4=12)),
                                 settling_time=10),
                              smooth=SmoothRampTestParams(
-                                 start_setpoints=ChannelValues(ch1=-45,
+                                 start_setpoints=ChannelValues(ch1=0,
                                                                ch2=-85,
                                                                ch3=-20,
                                                                ch4=-20),
@@ -1067,8 +1067,7 @@ MODELS = {
                               )
                              ),
 
-
-    "BTA-Q15X6-Q14XY": PSCModel(
+    "BTA-Q15XY-Q14XY": PSCModel(
                                 model_id="BTA-Q15XY-Q14XY",
                                 display_name="4CH-MSS-BTA-Q15XY-Q14XY",
                                 description="PSC-4CH-MSS-BTA-Q15XY-Q14XY",
@@ -1103,10 +1102,10 @@ MODELS = {
                                                                     ch4=12)),
                                 settling_time=10),
                              smooth=SmoothRampTestParams(
-                                 start_setpoints=ChannelValues(ch1=-20,
-                                                               ch2=-20,
-                                                               ch3=-20,
-                                                               ch4=-20),
+                                 start_setpoints=ChannelValues(ch1=0,
+                                                               ch2=0,
+                                                               ch3=0,
+                                                               ch4=0),
                                  end_setpoints=ChannelValues(ch1=20,
                                                              ch2=20,
                                                              ch3=20,
@@ -1127,7 +1126,6 @@ MODELS = {
                                  tolerance=0.05
                               )
                              ),
-
 
     "BTA-Q10XY-Q7XY": PSCModel(
                                 model_id="BTA-Q10XY-Q7XY",
@@ -1188,7 +1186,6 @@ MODELS = {
                                  tolerance=0.05
                               )
                              ),
-
 
     "BTA-B8-B5-6": PSCModel(
                                 model_id="BTA-B8-B5-6",
