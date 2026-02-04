@@ -1051,7 +1051,7 @@ MODELS = {
                                                              ch3=20,
                                                              ch4=20),
                                  ramp_rate=ChannelValues(ch1=15,
-                                                         ch2=15,
+                                                         ch2=60,
                                                          ch3=15,
                                                          ch4=15),
                                  settling_time=10,

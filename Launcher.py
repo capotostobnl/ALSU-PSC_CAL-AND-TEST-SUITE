@@ -88,18 +88,19 @@ def main():
 
     dut = DUT()
     dut.prompt_inputs()
+    sleep_option = False
     sleep_option = input("Sleep 20 minutes?")
-    """if sleep_option == "True" or 1:
+    if sleep_option == "1":
         sleep_option = True
-    elif sleep_option == "False" or 0:
+    elif sleep_option == "0":
         sleep_option = False
-
     else: 
-        print("Enter True, 1, False, or 0")
+        print("Enter 1 to sleep, or 0 to continue immediately")
 
     if sleep_option:
         print(f"Sleeping 20 Minutes")
-        total_seconds = (20*60)
+        #total_seconds = (20*60)
+        total_seconds = ((15+20)*60)
         print(f"Minutes remaining: {total_seconds/60}")
         while total_seconds >= 0:
                 mins = total_seconds // 60
@@ -112,7 +113,7 @@ def main():
                 time.sleep(1)
                 total_seconds -= 1
     
-    """
+
     if cal:
         print("Beginning Calibration...")
         run_calibration_suite(dut)

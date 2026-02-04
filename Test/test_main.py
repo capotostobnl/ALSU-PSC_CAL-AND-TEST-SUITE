@@ -63,6 +63,7 @@ def run_psc_test_suite(dut_instance=None):
     ate_init(ate, dut)
 
     for chan in range(1, dut.model.channels+1):
+#    for chan in range(1, 5):
         with channel_section(ctx, chan) as sec:
             print("\n\n*******************************************"
                   f"\nBeginning Channel {chan} ATE Fault Tests..."

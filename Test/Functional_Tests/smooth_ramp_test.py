@@ -89,7 +89,27 @@ def smooth_ramp_test(dut: DUT, ate: ATE, section: list,
     dut.psc.set_rate(chan, ramp_rate)
     print(f"Moving to Start: {start_sp}A")
     dut.psc.set_dac_setpt(chan, start_sp)
-    sleep(settling_time)  # Allow initial move to settle
+
+    timeout = 30 
+    elapsed = 0
+
+    dut.psc.set_dac_setpt(chan, 1)  # Move DAC Setpt to some non-zero value to prevent hanging on bug...
+    sleep(0.5)
+
+    while abs(dut.psc.get_dac(chan) - start_sp) > 0.5: # 0.5A tolerance
+        if elapsed >= timeout:
+            print("Timeout reached! PS failed to reach start setpoint.Exiting")
+            exit()
+        
+        print(f"Waiting for stable baseline... Current: {dut.psc.get_dac(chan)}A")
+        dut.psc.set_dac_setpt(chan, start_sp)
+        print(f"Setpoint set to: Channel: {chan}, SP: {start_sp}")
+        sleep(1)
+        elapsed += 1
+
+    print(f"Baseline reached. Settling for {settling_time}s...")
+    sleep(settling_time)
+
     print(f"Ramping: {start_sp}A -> {end_sp}A @ {ramp_rate}A/s")
     dut.psc.set_dac_setpt(chan, end_sp)
 
