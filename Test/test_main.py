@@ -84,7 +84,7 @@ def run_psc_test_suite(dut_instance=None):
                   f"\nBeginning Channel {chan} Smooth Ramp Tests..."
                   "\n*******************************************")
             smooth_ramp_test(dut, ate, sec, chan, ctx)
-
+    
     print(dut.bandwidth)
     if dut.bandwidth == "F":
         print("\n\n*******************************************"
