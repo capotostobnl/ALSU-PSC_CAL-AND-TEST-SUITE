@@ -62,7 +62,10 @@ def run_psc_test_suite(dut_instance=None):
     evr_timing_test(dut, ctx)
     ate_init(ate, dut)
 
-    for chan in range(1, dut.model.channels+1):
+    for chan, drive, readback in zip(dut.model.channels,
+                                     dut.model.drive_channels,
+                                     dut.model.readback_channels
+                                     ):
 #    for chan in range(1, 5):
         with channel_section(ctx, chan) as sec:
             print("\n\n*******************************************"
@@ -70,21 +73,24 @@ def run_psc_test_suite(dut_instance=None):
                   "\n*******************************************")
             ate_fault_tests(dut, ate, sec, chan)
 
-            print("\n\n*******************************************"
-                  f"\nBeginning Channel {chan} Regulation Tests..."
-                  "\n*******************************************")
-            ps_regulation_test(dut, ate, sec, chan, ctx)
+            if dut.model.func_tests.regulation:
+                print("\n\n*******************************************"
+                    f"\nBeginning Channel {chan} Regulation Tests..."
+                    "\n*******************************************")
+                ps_regulation_test(dut, ate, sec, chan, ctx, drive, readback)
 
-            print("\n\n*******************************************"
-                  f"\nBeginning Channel {chan} Jump Tests..."
-                  "\n*******************************************")
-            jump_test(dut, ate, sec, chan, ctx)
+            if dut.model.func_tests.jump:
+                print("\n\n*******************************************"
+                    f"\nBeginning Channel {chan} Jump Tests..."
+                    "\n*******************************************")
+                jump_test(dut, ate, sec, chan, ctx, drive, readback)
 
-            print("\n\n*******************************************"
-                  f"\nBeginning Channel {chan} Smooth Ramp Tests..."
-                  "\n*******************************************")
-            smooth_ramp_test(dut, ate, sec, chan, ctx)
-    
+            if dut.model.func_tests.smooth:
+                print("\n\n*******************************************"
+                    f"\nBeginning Channel {chan} Smooth Ramp Tests..."
+                    "\n*******************************************")
+                smooth_ramp_test(dut, ate, sec, chan, ctx, drive, readback)
+
     print(dut.bandwidth)
     if dut.bandwidth == "F":
         print("\n\n*******************************************"

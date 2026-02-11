@@ -27,8 +27,13 @@ plt.rcParams['axes.formatter.limits'] = [-7, 7]
 ########################################################################
 
 
-def jump_test(dut: DUT, ate: ATE, section: list, chan: int,
-              ctx: ReportContext):
+def jump_test(dut: DUT,
+              ate: ATE,
+              section: list,
+              chan: int,
+              ctx: ReportContext,
+              drive_chan: tuple,
+              readback_chan: tuple):
     """
     Executes a Step Response (Jump) test and generates diagnostic plots.
 

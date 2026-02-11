@@ -24,7 +24,7 @@ Usage:
 
 import sys
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, NamedTuple
 
 
 @dataclass(frozen=True)
@@ -98,6 +98,17 @@ class RegulatorTestParams:
     sample_interval: float = 0.3  # Default 300ms between samples
 
 
+class WaveformFlags(NamedTuple):
+    """Masking waveforms for specialized tests/units"""
+    DAC: bool = True
+    DCCT1: bool = True
+    DCCT2: bool = True
+    ERR: bool = True
+    REG: bool = True
+    VOLT: bool = True
+    IGND: bool = True
+    SPARE: bool = True
+
 @dataclass(frozen=True)
 class SmoothRampTestParams:
     """
@@ -120,6 +131,7 @@ class SmoothRampTestParams:
     ramp_rate: ChannelValues  # Set Per-Channel Ramp Rates for Smooth Test
     settling_time: float = 10  # Default settling time of 10 seconds
     tolerance: float = 0.050  # Default Pass/Fail Threshold to 50mA
+    waveforms: WaveformFlags = field(default_factory=WaveformFlags)
 
 @dataclass
 class CalibrationParameters:
@@ -326,6 +338,12 @@ class JumpTestParams:
     sample_window: int = 500        # Points to show before/after the jump
     tolerance: float = 0.050        # Ground current pass/fail threshold (A)
 
+class FuncSuite(NamedTuple):
+    """Select which functional tests each PSC carries out"""
+    regulation: bool = True
+    jump: bool = True
+    smooth: bool = True
+
 
 @dataclass(frozen=True, kw_only = True)
 class PSCModel:
@@ -349,13 +367,34 @@ class PSCModel:
     model_id: str         # Internal ID (e.g., "R1-HSS")
     display_name: str     # Short name for menu (e.g., "R1 2Ch")
     description: str      # Full description (e.g., "PSC-2CH-HSS-AR-QD-QF")
-    channels: int
-    designation: str
+    channels: tuple[int, ...] = field(default_factory=tuple)  # PSC Channels Used
+    designation: str      # Calibration Script Designation
+
+    # Select Functional Tests to perform
+    func_tests: FuncSuite = field(default_factory=FuncSuite)
+
+    # drive_channels and readback_channels are special values. They will match the
+    # PSC 1:1 for normal PSCs, e.g., drive_channels[1, 2, 3, 4] will match with
+    # readback_channels[1, 2, 3, 4]
+    # But to address special cases -- e.g. BTA-R3 with wire jumpers
+    # added, can use Channel 3's PID loop to drive Channel 4's output.
+    # In this case, drive_channels[2, 3, 3] will match with
+    # readback_channels[2, 3, 4], where 1 is unused, and Channel 3 drives Channel 4
+
+    drive_channels: tuple[int, ...] = field(default_factory=tuple)
+    readback_channels: tuple[int, ...] = field(default_factory=tuple)
+
+    def __post_init__(self):
+        object.__setattr__(self, 'channels', tuple(self.channels))
+        object.__setattr__(self, 'drive_channels', tuple(self.drive_channels))
+        object.__setattr__(self, 'readback_channels', tuple(self.readback_channels))
 
     ################################################################################
     #      Calibration Parameters
     ################################################################################
-    calibration_parameters: CalibrationParameters = CalibrationParameters
+    calibration_parameters: CalibrationParameters = field(
+        default_factory=CalibrationParameters
+    )
     calibration_test_thresholds: CalibrationTestThresholds = field(
         default_factory = CalibrationTestThresholds
     )
@@ -386,7 +425,9 @@ MODELS = {
                        display_name="2CH-HSS-AR-QD-QF",
                        description="PSC-2CH-HSS-AR-QD-QF",
                        designation="PSC-2CH-HSS-AR-QD-QF_",
-                       channels=2,
+                       channels=(1, 2),
+                       drive_channels=(1, 2),
+                       readback_channels=(1,2),
 
                        #####################################################################
                        #      Calibration                                                  #
@@ -436,7 +477,9 @@ MODELS = {
                           display_name="ABEND QFA - R3 2Ch",
                           description="PSC-2CH-HSS-AR-Abend-QFA",
                           designation="2CH-HSS-AR-ABend-QFA_",
-                          channels=2,
+                          channels=(1, 2),
+                          drive_channels=(1, 2),
+                          readback_channels=(1,2),
 
                           #####################################################################
                           #      Calibration                                                  #
@@ -486,7 +529,9 @@ MODELS = {
                         display_name="4CH-MSS-AR Slow XY Corr",
                         description="PSC-4CH-MSS-AR-Slow XY Corr.",
                         designation="4CH-MSS-AR Slow XY Corr_",
-                        channels=2,
+                        channels=(1, 2),
+                        drive_channels=(1, 2),
+                        readback_channels=(1,2),
 
                             #######################################################################
                             #      Calibration                                                    #
@@ -540,7 +585,9 @@ MODELS = {
                        display_name="4CH-MSS-AR Slow XY Corr",
                        description="PSC-4CH-MSS-AR-Slow XY Corr.",
                        designation="4CH-MSS-AR Slow XY Corr_",
-                       channels=4,
+                       channels=(1, 2, 3, 4),
+                       drive_channels=(1, 2, 3, 4),
+                       readback_channels=(1,2, 3, 4),
 
                           #######################################################################
                           #      Calibration                                                    #
@@ -599,7 +646,9 @@ MODELS = {
                        display_name="4CH-MSF-AR-Fast XY Corr",
                        description="PSC-4CH-MSF-AR-Fast XY Corr.",
                        designation="4CH-MSF-AR-Fast XY Corr_",
-                       channels=4,
+                       channels=(1, 2, 3, 4),
+                       drive_channels=(1, 2, 3, 4),
+                       readback_channels=(1,2, 3, 4),
 
                           #######################################################################
                           #      Calibration                                                    #
@@ -657,7 +706,9 @@ MODELS = {
                        display_name="4CH-MSS-AR-SK",
                        description="PSC-4CH-MSS-AR-SK",
                        designation="4CH-MSS-AR-SK_",
-                       channels=4,
+                       channels=(1, 2, 3, 4),
+                       drive_channels=(1, 2, 3, 4),
+                       readback_channels=(1,2, 3, 4),
 
                       #######################################################################
                       #      Calibration                                                    #
@@ -715,7 +766,9 @@ MODELS = {
                             display_name="R2 4Ch MSS AR-SD-SF",
                             description="PSC-4CH-MSS-AR-SD-SF",
                             designation="4CH-MSS-AR-SD-SF_",
-                            channels=4,
+                            channels=(1, 2, 3, 4),
+                            drive_channels=(1, 2, 3, 4),
+                            readback_channels=(1,2, 3, 4),
 
 
                           #######################################################################
@@ -773,7 +826,9 @@ MODELS = {
                              display_name="R3 4Ch MSS QFA SHUNT",
                              description="PSC-4CH-MSS-QFA Shunt",
                              designation="4CH-MSS-AR-QFA_Shunt_",
-                             channels=4,
+                             channels=(1, 2, 3, 4),
+                             drive_channels=(1, 2, 3, 4),
+                             readback_channels=(1,2, 3, 4),
 
 
                           #######################################################################
@@ -832,7 +887,9 @@ MODELS = {
                              display_name="4CH-MSS-BTA-Q12-Q8-Q7-Q11",
                              description="PSC-4CH-MSS-BTA-Q12-Q8-Q7-Q11",
                              designation="4CH-MSS-BTA-Q12-Q8-Q7-Q11_",
-                             channels=4,
+                             channels=(1, 2, 3, 4),
+                             drive_channels=(1, 2, 3, 4),
+                             readback_channels=(1,2, 3, 4),
 
 
                           #######################################################################
@@ -892,7 +949,9 @@ MODELS = {
                              display_name="4CH-MSS-BTA-Q16-Q15-Q9",
                              description="PSC-4CH-MSS-BTA-Q16-Q15-Q9",
                              designation="4CH-MSS-BTA-Q16-Q15-Q9_",
-                             channels=3,
+                             channels=(1, 2, 3),
+                             drive_channels=(1, 2, 3),
+                             readback_channels=(1,2, 3),
 
 
                           #######################################################################
@@ -948,7 +1007,9 @@ MODELS = {
                                 display_name="4CH-MSS-BTA-Q14-Q10-Q6",
                                 description="PSC-4CH-MSS-BTA-Q14-Q10-Q6",
                                 designation="4CH-MSS-BTA-Q14-Q10-Q6_",
-                                channels=4,
+                                channels=(1, 2, 3),
+                                drive_channels=(1, 2, 3),
+                                readback_channels=(1,2, 3),
 
 
                           #######################################################################
@@ -1006,7 +1067,9 @@ MODELS = {
                                 display_name="4CH-MSS-BTA-DA_B4_B7-8",
                                 description="PSC-4CH-MSS-BTA-DA_B4_B7-8",
                                 designation="4CH-MSS-BTA-DA_B4_B7-8_",
-                                channels=4,
+                                channels=(1, 2, 3),
+                                drive_channels=(1, 2, 3),
+                                readback_channels=(1,2, 3),
 
 
                           #######################################################################
@@ -1065,7 +1128,9 @@ MODELS = {
                                 display_name="4CH-MSS-BTA-Q13-Q2-BT6-BT8",
                                 description="PSC-4CH-MSS-BTA-Q13-Q2-BT6-BT8",
                                 designation="4CH-MSS-BTA-Q13-Q2-BT6-BT8_",
-                                channels=4,
+                                channels=(1, 2, 3, 4),
+                                drive_channels=(1, 2, 3, 4),
+                                readback_channels=(1,2, 3, 4),
 
 
                           #######################################################################
@@ -1125,7 +1190,9 @@ MODELS = {
                                 display_name="4CH-MSS-BTA-Q15XY-Q14XY",
                                 description="PSC-4CH-MSS-BTA-Q15XY-Q14XY",
                                 designation="4CH-MSS-BTA-Q15XY-Q14XY_",
-                                channels=4,
+                                channels=(1, 2, 3, 4),
+                                drive_channels=(1, 2, 3, 4),
+                                readback_channels=(1,2, 3, 4),
 
 
                           #######################################################################
@@ -1185,7 +1252,9 @@ MODELS = {
                                 display_name="4CH-MSS-BTA-Q10XY-Q7XY",
                                 description="PSC-4CH-MSS-BTA-Q10XY-Q7XY",
                                 designation="4CH-MSS-BTA-Q10XY-Q7XY_",
-                                channels=4,
+                                channels=(1, 2, 3, 4),
+                                drive_channels=(1, 2, 3, 4),
+                                readback_channels=(1,2, 3, 4),
 
 
                           #######################################################################
@@ -1240,12 +1309,17 @@ MODELS = {
                               )
                              ),
 
+    # Special special! Channel 3 PID loop drives Channel 4, TDKs put in series!
+    # Test only REgulator Out, PS Vout, Iout (Spare), and fault tests.
     "BTA-B8-B5-6": PSCModel(
                                 model_id="BTA-B8-B5-6",
                                 display_name="4CH-MSS-BTA-B8-B5-6",
                                 description="PSC-4CH-MSS-BTA-B8-B5-6",
                                 designation="4CH-MSS-BTA-B8-B5-6_",
-                                channels=4,
+                                channels=(2, 3, 4),
+                                drive_channels=(2, 3, 3),
+                                readback_channels=(2, 3, 4),
+                                func_tests=FuncSuite(regulation=False, jump=True, smooth=True),
 
 
                           #######################################################################
@@ -1288,7 +1362,19 @@ MODELS = {
                                                          ch3=60,
                                                          ch4=60),
                                  settling_time=10,
-                                 tolerance=0.05),
+                                 tolerance=0.05,
+
+                                 waveforms=WaveformFlags(
+                                     DAC=False,
+                                     DCCT1=False,
+                                     DCCT2=False,
+                                     ERR=False,
+                                     REG=True,
+                                     VOLT=True,
+                                     IGND=False,
+                                     SPARE=True
+                                 )
+                             ),
                              jump=JumpTestParams(
                                  start_setpoints=reg_pts,
                                  step_size=ChannelValues(ch1=0.5,
@@ -1328,9 +1414,6 @@ def get_psc_model_from_user(num_channels: int) -> PSCModel:
 
         elif num_channels == 2:
             available_models = [m for m in MODELS.values() if m.channels == num_channels]
-
-        if not available_models:
-            raise ValueError(f"No models defined for {num_channels} channels.")
 
         # Calculate padding: find the longest display name string
         # We add quotes in the length calc to match the print format
