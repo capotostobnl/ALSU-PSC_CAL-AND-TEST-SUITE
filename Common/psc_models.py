@@ -482,6 +482,59 @@ MODELS = {
                            )
                           ),
 
+    "SPECIAL_2CH_HSS_AR-Slow-XY-Corr": PSCModel(model_id="AR-Slow-XY-Corr",
+                        display_name="4CH-MSS-AR Slow XY Corr",
+                        description="PSC-4CH-MSS-AR-Slow XY Corr.",
+                        designation="4CH-MSS-AR Slow XY Corr_",
+                        channels=2,
+
+                            #######################################################################
+                            #      Calibration                                                    #
+                            #######################################################################
+                            calibration_parameters=CalibrationParameters(
+                                    ndcct=1000.0,
+                                    burden_resistors=ChannelValues(ch1=33.333333, ch2=33.333333,
+                                                ),
+                                    ovc1_threshold=ChannelValues(ch1=24.5, ch2=24.5),
+                                    ovc2_threshold=ChannelValues(ch1=24.5, ch2=24.5),
+                                    ovv_threshold=ChannelValues(ch1=18.5, ch2=18.5),
+                            ),
+
+                            psc_scale_factors=PSCScaleFactors(
+                                    sf_vout=ChannelValues(ch1=1.9, ch2=1.9),
+                                    sf_spare=ChannelValues(ch1=-5.0, ch2=-5.0),
+                            ),
+                            #######################################################################
+                            #      Test                                                           #
+                            #######################################################################
+                        reg=RegulatorTestParams(
+                            setpoints=(reg_pts := ChannelValues(ch1=10,
+                                                    ch2=10)),
+                            settling_time=10),
+
+
+                        smooth=SmoothRampTestParams(
+                            start_setpoints=ChannelValues(ch1=0,
+                                                            ch2=0,
+                                                            ),
+                            end_setpoints=ChannelValues(ch1=23.9,
+                                                        ch2=23.9,
+                                                        ),
+                            ramp_rate=ChannelValues(ch1=10,
+                                                    ch2=10,
+                                                    ),
+                            settling_time=10,
+                            tolerance=0.05),
+                        jump=JumpTestParams(
+                            start_setpoints=reg_pts,
+                            step_size=ChannelValues(ch1=0.05,
+                                                    ch2=0.05,
+                                                    ),
+                            sample_window=500,
+                            tolerance=0.05
+                            )
+                        ),
+
     # 4-Channel Units
     "AR-Slow-XY-Corr": PSCModel(model_id="AR-Slow-XY-Corr",
                        display_name="4CH-MSS-AR Slow XY Corr",
