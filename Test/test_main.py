@@ -3,20 +3,20 @@
 M. Capotosto 11/11/2025
 """
 
+import os
+import sys
 # pylint: disable=wrong-import-position
 # flake8: noqa: E402
 ###############################################################################
 #   Add outer directory to path, so app can find Common dir when run standalone
 if __name__ == "__main__":
-    import os
-    import sys
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(current_dir)
     if parent_dir not in sys.path:
         sys.path.append(parent_dir)
 ###############################################################################
-import os, subprocess
+import subprocess
 from Common.EPICS_Adapters.ate_epics import ATE
 from Common.initialize_dut import DUT
 from Test.test_report_generator import start_report, finalize_report, \
