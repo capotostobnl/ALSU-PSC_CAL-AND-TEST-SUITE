@@ -38,6 +38,7 @@ def prompt_execution_mode():
     Returns:
         str: The selected mode ('cal_only', 'test_only', or 'cal_and_test')
     """
+    """
     while True:
         print("\n--------------------------------")
         print("Select Execution Mode:")
@@ -65,7 +66,10 @@ def prompt_execution_mode():
                 f"\n[!] Invalid input: '{selection}'. "
                 "Please enter 1, 2, or 3."
                 )
-
+    """
+    cal_sel = False
+    test_sel = True
+    return cal_sel, test_sel
 
 def main():
     """

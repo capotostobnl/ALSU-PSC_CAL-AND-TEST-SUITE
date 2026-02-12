@@ -1,3 +1,9 @@
+#MAKE FUNCTIONAL TESTS SELECTABLE PER-CHANNEL....
+
+
+
+
+
 """
 PSC Model Definitions and Selection Utilities.
 
@@ -27,33 +33,18 @@ from dataclasses import dataclass, field
 from typing import List, NamedTuple
 
 
+from typing import List, NamedTuple, TypeVar, Generic, Any
+
+T = TypeVar('T')
+
 @dataclass(frozen=True)
-class ChannelValues:
-    """
-    A unified data container for per-channel PSC parameters.
+class ChannelValues(Generic[T]):
+    ch1: T
+    ch2: T
+    ch3: T | None = None
+    ch4: T | None = None
 
-    This class provides an explicit mapping of values (e.g., currents, voltages,
-    logic flags, or resistance) to physical PSC channels. It is designed to support
-    both legacy 2-channel hardware and modern 4-channel hardware seamlessly.
-
-    Attributes:
-        ch1 (float): The parameter value assigned to Channel 1.
-        ch2 (float): The parameter value assigned to Channel 2.
-        ch3 (Optional[float]): The parameter value assigned to Channel 3.
-            Defaults to None for 2-channel devices.
-        ch4 (Optional[float]): The parameter value assigned to Channel 4.
-            Defaults to None for 2-channel devices.
-
-    Methods:
-        as_list(): Returns a list containing only the active (non-None) channel values.
-        get(index): Safe accessor for retrieving a value by zero-based channel index.
-    """
-    ch1: float
-    ch2: float
-    ch3: float | None = None
-    ch4: float | None = None
-
-    def as_list(self) -> List[float]:
+    def as_list(self) -> List[T]:
         """Returns the non-None values as a list."""
         vals = [self.ch1, self.ch2]
         if self.ch3 is not None:
@@ -62,8 +53,8 @@ class ChannelValues:
             vals.append(self.ch4)
         return vals
 
-    def get(self, index: int) -> float:
-        """Retrieves value by 0-based index (0=ch1, 1=ch2, etc)."""
+    def get(self, index: int) -> T:
+        """Retrieves value by 0-based index."""
         return self.as_list()[index]
 
 @dataclass(frozen=True)
@@ -103,7 +94,7 @@ class WaveformFlags(NamedTuple):
     DAC: bool = True
     DCCT1: bool = True
     DCCT2: bool = True
-    ERR: bool = True
+    ERROR: bool = True
     REG: bool = True
     VOLT: bool = True
     IGND: bool = True
@@ -131,7 +122,11 @@ class SmoothRampTestParams:
     ramp_rate: ChannelValues  # Set Per-Channel Ramp Rates for Smooth Test
     settling_time: float = 10  # Default settling time of 10 seconds
     tolerance: float = 0.050  # Default Pass/Fail Threshold to 50mA
-    waveforms: WaveformFlags = field(default_factory=WaveformFlags)
+    waveforms: ChannelValues[WaveformFlags] = field(default_factory=lambda: ChannelValues(
+                                                                        ch1=WaveformFlags(), 
+                                                                        ch2=WaveformFlags()
+                                                                        )
+                                                    )
 
 @dataclass
 class CalibrationParameters:
@@ -337,12 +332,40 @@ class JumpTestParams:
     step_size: ChannelValues       # The magnitude of the jump (Amps)
     sample_window: int = 500        # Points to show before/after the jump
     tolerance: float = 0.050        # Ground current pass/fail threshold (A)
+    waveforms: ChannelValues[WaveformFlags] = field(default_factory=lambda: ChannelValues(
+                                                                        ch1=WaveformFlags(), 
+                                                                        ch2=WaveformFlags()
+                                                                        )
+                                                    )
 
-class FuncSuite(NamedTuple):
-    """Select which functional tests each PSC carries out"""
-    regulation: bool = True
-    jump: bool = True
-    smooth: bool = True
+@dataclass(frozen=True)
+class FuncSuite:
+    """
+    Select which functional tests each PSC carries out.
+    Supports global booleans or per-channel ChannelValues.
+    """
+    regulation: bool | ChannelValues = True
+    jump: bool | ChannelValues = True
+    smooth: bool | ChannelValues = True
+
+    def is_enabled(self, test_name: str, chan: int) -> bool:
+        """
+        Helper to resolve the test status for a specific channel.
+        Usage: dut.model.func_tests.is_enabled('regulation', chan)
+        """
+        val = getattr(self, test_name)
+        
+        # If it's a global boolean (e.g., True/False), return it directly
+        if isinstance(val, bool):
+            return val
+        
+        # If it's a ChannelValues object, look up the specific channel
+        if isinstance(val, ChannelValues):
+            # getattr returns the value (True/False/None). 
+            # We treat None as False.
+            return getattr(val, f"ch{chan}", False) or False
+            
+        return False
 
 
 @dataclass(frozen=True, kw_only = True)
@@ -1313,13 +1336,21 @@ MODELS = {
     # Test only REgulator Out, PS Vout, Iout (Spare), and fault tests.
     "BTA-B8-B5-6": PSCModel(
                                 model_id="BTA-B8-B5-6",
-                                display_name="4CH-MSS-BTA-B8-B5-6",
-                                description="PSC-4CH-MSS-BTA-B8-B5-6",
-                                designation="4CH-MSS-BTA-B8-B5-6_",
+                                display_name="4CH-HSS-BTA-B8-B5-6",
+                                description="PSC-4CH-HSS-BTA-B8-B5-6",
+                                designation="4CH-HSS-BTA-B8-B5-6_",
                                 channels=(2, 3, 4),
                                 drive_channels=(2, 3, 3),
                                 readback_channels=(2, 3, 4),
-                                func_tests=FuncSuite(regulation=False, jump=True, smooth=True),
+                                func_tests=FuncSuite(
+                                    regulation=ChannelValues(
+                                        ch1 = None,
+                                        ch2 = True,
+                                        ch3 = True, 
+                                        ch4 = False
+                                    ),
+                                    jump=True,
+                                    smooth=True),
 
 
                           #######################################################################
@@ -1336,8 +1367,8 @@ MODELS = {
                           ),
 
                           psc_scale_factors= PSCScaleFactors(
-                                sf_vout=ChannelValues(ch1=None, ch2=-2.5, ch3=-8.0, ch4=None),
-                                sf_spare=ChannelValues(ch1=None, ch2=-39, ch3=-32.5, ch4=None),
+                                sf_vout=ChannelValues(ch1=None, ch2=-2.5, ch3=-8.0, ch4=-8.0),
+                                sf_spare=ChannelValues(ch1=None, ch2=-39, ch3=-32.5, ch4=-32.5),
                           ),
                           #######################################################################
                           #      Test                                                           #
@@ -1354,27 +1385,32 @@ MODELS = {
                                                                ch3=0,
                                                                ch4=None),
                                  end_setpoints=ChannelValues(ch1=None,
-                                                             ch2=385,
-                                                             ch3=320,
+                                                             ch2=285,
+                                                             ch3=285,
                                                              ch4=None),
-                                 ramp_rate=ChannelValues(ch1=60,
-                                                         ch2=60,
-                                                         ch3=60,
-                                                         ch4=60),
+                                 ramp_rate=ChannelValues(ch1=None,
+                                                         ch2=100,
+                                                         ch3=100,
+                                                         ch4=None),
                                  settling_time=10,
                                  tolerance=0.05,
-
-                                 waveforms=WaveformFlags(
+                                 
+                                 waveforms=ChannelValues(
+                                     ch1=None,            
+                                     ch2=WaveformFlags(), # using defaults
+                                     ch3=WaveformFlags(), # using defaults
+                                     ch4=WaveformFlags(
                                      DAC=False,
                                      DCCT1=False,
                                      DCCT2=False,
-                                     ERR=False,
+                                     ERROR=False,
                                      REG=True,
                                      VOLT=True,
                                      IGND=False,
                                      SPARE=True
-                                 )
-                             ),
+                                    )
+                                )
+                            ),
                              jump=JumpTestParams(
                                  start_setpoints=reg_pts,
                                  step_size=ChannelValues(ch1=0.5,
@@ -1382,10 +1418,24 @@ MODELS = {
                                                          ch3=0.5,
                                                          ch4=0.5),
                                  sample_window=500,
-                                 tolerance=0.05
-                              )
-                             ),
-
+                                 tolerance=0.05,
+                                 waveforms=ChannelValues(
+                                     ch1=None,            
+                                     ch2=WaveformFlags(), # using defaults
+                                     ch3=WaveformFlags(), # using defaults
+                                     ch4=WaveformFlags(
+                                     DAC=False,
+                                     DCCT1=False,
+                                     DCCT2=False,
+                                     ERROR=False,
+                                     REG=True,
+                                     VOLT=True,
+                                     IGND=False,
+                                     SPARE=True
+                                    )
+                                )
+                              ),
+                            ),
 }
 
 
@@ -1394,56 +1444,51 @@ MODELS = {
 # -----------------------------------------------------------------------------
 
 def get_psc_model_from_user(num_channels: int) -> PSCModel:
-    """
-    Filters models and prompts operator with aligned columns.
-    
-    Args:
-        num_channels: The integer number of detected channels (e.g., 2 or 4).
+    # Normalize channel count: 
+    # 2 or less becomes 2; 3 or more becomes 4.
+    if num_channels is None:
+        # Fallback if the DUT detection failed entirely
+        raise RuntimeError("Unable to detect # Of Channels..Check EEPROM?")
+    else:
+        search_channels = 2 if num_channels <= 2 else 4
 
-    Returns:
-        PSCModel: The selected configuration object.
+    # Filter models based on the normalized count
+    if search_channels == 2:
+        model_list = [m for m in MODELS.values() if len(m.channels) <= 2]
+    else:
+        model_list = [m for m in MODELS.values() if len(m.channels) >= 3]
 
-    Raises:
-        ValueError: If no models exist for the given channel count.
-        SystemExit: If the user aborts selection.
-    """
+    # Safety check to prevent the ValueError: max() arg is an empty sequence
+    if not model_list:
+        print(f"\n[!] Error: No models registered for {search_channels} channels.")
+        # Optional: fall back to showing ALL models if the filtered list is empty
+        # model_list = list(MODELS.values()) 
+        sys.exit(1)
 
-    try:
-        if num_channels == 4:
-            available_models = [m for m in MODELS.values() if m.channels in [3, 4]]
+    # Now this will never receive an empty sequence
+    max_label_len = max(len(f"'{m.display_name}'") for m in model_list)
 
-        elif num_channels == 2:
-            available_models = [m for m in MODELS.values() if m.channels == num_channels]
+    print(f"\nDetected {num_channels} channels. Showing {search_channels}-channel models:")
+    print("-" * (max_label_len + 15))
+    for i, model in enumerate(model_list, 1):
+        print(f"  {i}) {model.display_name.ljust(max_label_len)} [{model.description}]")
+    print("-" * (max_label_len + 15))
+    # ------------------------
+    while True:
+        try:
+            choice = input("\nEnter Type (or 'q' to quit): ")\
+                .strip().lower()
 
-        # Calculate padding: find the longest display name string
-        # We add quotes in the length calc to match the print format
-        max_label_len = max(len(f"'{m.display_name}'")
-                            for m in available_models) + 2
+            if choice == 'q':
+                print("Testing aborted by operator.")
+                sys.exit(0)
 
-        print(f"\n--- Select {num_channels}-Channel PSC Type ---")
-        for i, model in enumerate(available_models, 1):
-            label = f"'{model.display_name}'".ljust(max_label_len)
-            print(f"{i}. {label} | {model.description}")
+            idx = int(choice) - 1
+            if 0 <= idx < len(model_list):
+                selected = model_list[idx]
+                print(f"--> Selected: {selected.display_name}\n")
+                return selected
 
-        while True:
-            try:
-                choice = input("\nEnter Type (or 'q' to quit): ")\
-                    .strip().lower()
-
-                if choice == 'q':
-                    print("Testing aborted by operator.")
-                    sys.exit(0)
-
-                idx = int(choice) - 1
-                if 0 <= idx < len(available_models):
-                    selected = available_models[idx]
-                    print(f"--> Selected: {selected.display_name}\n")
-                    return selected
-
-                print(f"Invalid choice. Select 1-{len(available_models)}.")
-            except ValueError:
-                print("Invalid input. Please enter a number.")
-
-    except KeyboardInterrupt:
-        print("\n\nExecution interrupted by operator (Ctrl+C). Exiting...")
-        sys.exit(0)
+            print(f"Invalid choice. Select 1-{len(model_list)}.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")

@@ -66,26 +66,26 @@ def run_psc_test_suite(dut_instance=None):
                                      dut.model.drive_channels,
                                      dut.model.readback_channels
                                      ):
-#    for chan in range(1, 5):
+    #for chan, drive, readback in zip((3,4), (3, 3), (3,4)):
         with channel_section(ctx, chan) as sec:
             print("\n\n*******************************************"
                   f"\nBeginning Channel {chan} ATE Fault Tests..."
                   "\n*******************************************")
             ate_fault_tests(dut, ate, sec, chan)
 
-            if dut.model.func_tests.regulation:
+            if dut.model.func_tests.is_enabled("regulation", chan):
                 print("\n\n*******************************************"
                     f"\nBeginning Channel {chan} Regulation Tests..."
                     "\n*******************************************")
                 ps_regulation_test(dut, ate, sec, chan, ctx, drive, readback)
 
-            if dut.model.func_tests.jump:
+            if dut.model.func_tests.is_enabled("jump", chan):
                 print("\n\n*******************************************"
                     f"\nBeginning Channel {chan} Jump Tests..."
                     "\n*******************************************")
                 jump_test(dut, ate, sec, chan, ctx, drive, readback)
 
-            if dut.model.func_tests.smooth:
+            if dut.model.func_tests.is_enabled("smooth", chan):
                 print("\n\n*******************************************"
                     f"\nBeginning Channel {chan} Smooth Ramp Tests..."
                     "\n*******************************************")

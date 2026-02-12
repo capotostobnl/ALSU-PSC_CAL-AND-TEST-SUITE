@@ -98,7 +98,7 @@ def ps_regulation_test(dut: DUT,
           f"setpoint: {setpoint}A")
 
     dut.psc.set_dac_setpt(drive_chan, setpoint)
-    print(f"Chan: {readback_chan}, setpoint: {setpoint}")
+    print(f"Chan: {drive_chan}, setpoint: {setpoint}")
     print("PSC rate, DAC setpoint, Enable, Park, and Power bits set...")
 
     settling_time = getattr(dut.model.reg, 'settling_time')
@@ -110,8 +110,8 @@ def ps_regulation_test(dut: DUT,
     tolerance = dut.model.reg.tolerance
 
     run = 0
-    sp_sat = (setpoint - 0.01) < dut.psc.get_dac(drive_chan) < \
-        (setpoint + 0.01)
+    
+    sp_sat = False
 
     while run < 6:
 
@@ -121,11 +121,19 @@ def ps_regulation_test(dut: DUT,
             run += 1
             dut.psc.set_dac_setpt(drive_chan, setpoint)
             sleep(5)
+
+            dac_rb = dut.psc.get_dac(drive_chan)
+            sp_sat = (setpoint - 0.05) < dac_rb < (setpoint + 0.05)
+            sleep(2)
+
         elif sp_sat:
             print("SP Satisfied...continuing...")
             break
+    
+    if not sp_sat: 
+        raise RuntimeError("DAC RB Unable to be satisfied after 6 attempts! Exiting!")
     run = 0
-
+    
     # Collect 1 minute of data:
     collection_time = samples * interval
     print(f"Preparing to collect {collection_time} seconds of data "

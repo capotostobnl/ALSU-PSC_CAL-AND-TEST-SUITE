@@ -146,13 +146,15 @@ def smooth_ramp_test(dut: DUT,
         # pylint: enable=line-too-long
     ]
 
+    channel_flags = getattr(dut.model.smooth.waveforms, f"ch{chan}")
+
     waveform_configs = []
     for pv, y_label, title, label in waveform_metadata:
-        # Only hit the network if the flag is True
-        if getattr(dut.model.smooth.waveforms, label, True):
-            data = dut.psc.get_wfm(chan, pv)  # <--- Network call happens here
+        # 2. Check the flag on the specific channel object, not the container
+        # If channel_flags is None (undefined in model), default to True (plot everything)
+        if channel_flags is None or getattr(channel_flags, label, True):
+            data = dut.psc.get_wfm(chan, pv)
             waveform_configs.append((data, y_label, title, label))
-
     plt.ion()
 
     for data, y_label, title, label in waveform_configs:
@@ -216,3 +218,4 @@ def smooth_ramp_test(dut: DUT,
             section.append(Spacer(1, 0.2 * inch))
 
     dut.psc.set_dac_setpt(chan, 0)
+    return

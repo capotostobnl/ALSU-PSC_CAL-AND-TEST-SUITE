@@ -60,55 +60,56 @@ def jump_test(dut: DUT,
     # --- HARDWARE INITIALIZATION ---
     # Configure ground current monitoring and snapshot window
     jump_params = dut.model.jump
-    start_sp = getattr(jump_params.start_setpoints, f"ch{chan}")
-    step_size = getattr(jump_params.step_size, f"ch{chan}")
+    start_sp = getattr(jump_params.start_setpoints, f"ch{drive_chan}")
+    step_size = getattr(jump_params.step_size, f"ch{drive_chan}")
     target_sp = start_sp + step_size
     window = jump_params.sample_window
     tolerance = jump_params.tolerance
 
     ignd_setpoint = 0.1
-    ate.set_ignd_channel(chan)
+    ate.set_ignd_channel(drive_chan)
     sleep(0.5)
-    ate.set_ignd_value(ignd_setpoint, chan, dut)
-    print(f"Set CH{chan} ignd to {ignd_setpoint}, waiting 5 seconds settling"
+    ate.set_ignd_value(ignd_setpoint, drive_chan, dut)
+    print(f"Set CH{drive_chan} ignd to {ignd_setpoint}, waiting 5 seconds settling"
           " time...")
     sleep(5)
 
     wfm_pvs = dut.psc.WfmPV
-    dut.psc.set_wfm_xmin(chan, 0)
-    dut.psc.set_wfm_xmax(chan, 100000)
-    dut.psc.set_op_mode(chan, 3)  # Set Mode to Jump
+    dut.psc.set_wfm_xmin(readback_chan, 0)
+    dut.psc.set_wfm_xmax(readback_chan, 100000)
+    dut.psc.set_op_mode(drive_chan, 3)  # Set Mode to Jump
     dut.psc.flush_io()
 
     # --- BASELINE STABILIZATION ---
     # Ensure the PSC is at the starting current before the jump
-    dut.psc.set_dac_setpt(chan, start_sp)
-    print(f"DAC SP: {start_sp} \nDAC RB: {dut.psc.get_dac(chan)}(ramping)")
+    dut.psc.set_dac_setpt(drive_chan, start_sp)
+    print(f"DAC SP: {start_sp} \nDAC RB: {dut.psc.get_dac(drive_chan)}(ramping)")
     dut.psc.flush_io()
+    sleep(10)
 
     timeout = 0
-    while int(dut.psc.get_dac(chan)) not in \
+    while int(dut.psc.get_dac(drive_chan)) not in \
             range(int(start_sp)-1, int(start_sp)+1):
         print("Waiting for DAC SP to stabilize")
-        dut.psc.set_dac_setpt(chan, start_sp)
+        dut.psc.set_dac_setpt(drive_chan, start_sp)
         timeout = timeout + 1
         sleep(1)
         if timeout == 30:
             print("Unable to reach Start SP in 30 seconds..."
-                  f"DAC SP: {start_sp}A, DAC RB: {dut.psc.get_dac(chan)}")
+                  f"DAC SP: {start_sp}A, DAC RB: {dut.psc.get_dac(drive_chan)}")
             raise SystemExit
 
     # --- TRANSIENT CAPTURE ---
     # Perform the jump and trigger high-speed snapshot
     print(f"Jumping to: {target_sp}A (Step: {step_size}A)")
-    dut.psc.set_dac_setpt(chan, target_sp)
+    dut.psc.set_dac_setpt(drive_chan, target_sp)
     dut.psc.flush_io()
     sleep(0.1)
     print(f"DAC SP: {start_sp} \nDAC RB: {dut.psc.get_dac(chan)}(ramping)")
 
-    dut.psc.user_shot(chan)
+    dut.psc.user_shot(readback_chan)
     sleep(2)
-    while dut.psc.is_user_trig_active(chan) > 0:
+    while dut.psc.is_user_trig_active(readback_chan) > 0:
         sleep(1)
         print("Waiting for Jump Snapshot data.....")
     sleep(4)
@@ -118,49 +119,82 @@ def jump_test(dut: DUT,
 
     # --- DATA ANALYSIS & INDEXING ---
     # Detect jump location and define crop windows
-    dac_wfm = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.DAC))
-    dcct1 = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.DCCT1))
-    dcct2 = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.DCCT2))
-    error = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.ERR))
-    reg_wfm = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.REG))
-    volt = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.VOLT))
-    gnd_wfm = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.GND))
-    spare = np.asarray(dut.psc.get_wfm(chan, wfm_pvs.SPARE))
+    trigger_pv = wfm_pvs.DAC # Default
+    try:
+        flags = getattr(dut.model.jump.waveforms, f"ch{readback_chan}")
+        if flags and not getattr(flags, "DAC", True):
+            if getattr(flags, "REG", False): 
+                trigger_pv = wfm_pvs.REG
+            elif getattr(flags, "VOLT", False): 
+                trigger_pv = wfm_pvs.VOLT
+    except AttributeError:
+        pass # Keep default
 
-    # Find the jump location (where the change is greatest)
-    jump_index = int(np.argmax(np.abs(np.diff(dac_wfm))))
+    print(f"Calculating Jump Index using Trigger PV: {trigger_pv}")
 
-    # Define the fixed +/- 500 sample transition window
-    idx_start = max(0, jump_index - window)
-    idx_end = min(len(dac_wfm), jump_index + window)
+    # 2. Fetch Trigger Data and Calculate Window
+    trigger_data = np.asarray(dut.psc.get_wfm(readback_chan, trigger_pv))
+    
+    try:
+        # Find the index of maximum change (the jump)
+        jump_idx = int(np.argmax(np.abs(np.diff(trigger_data))))
+    except ValueError:
+        jump_idx = 0
+    
+    print(f"Detected Jump at Sample Index: {jump_idx}")
 
-    waveform_configs = [
-        (dac_wfm, "Current (A)", "DAC Loopback", "DAC Transition", "DAC"),
-        (dcct1,   "Current (A)", "DCCT 1",       "DCCT1 Transition", "DCCT1"),
-        (dcct2,   "Current (A)", "DCCT 2",       "DCCT2 Transition", "DCCT2"),
-        (error,   "Current (A)", "ERROR",        "Error Transition", "ERROR"),
-        (reg_wfm, "Current (A)", "REG",          "REG Transition",   "REG"),
-        (volt,    "Voltage (V)", "PS VOLT",      "VOLT Transition",  "VOLT"),
-        (gnd_wfm, "Current (A)", "IGND",         "IGND Transition",  "IGND"),
-        (spare,   "Current (A)", "SPARE",        "SPARE Transition", "SPARE")
+    # Define the shared window for ALL plots
+    t_start = max(0, jump_idx - window)
+    t_end = min(len(trigger_data), jump_idx + window)
+
+    waveform_metadata = [
+        # pylint: disable=line-too-long
+        # DATA           Y_LABEL       F_TITLE          Z_TITLE,            LABEL     # noqa: E501
+        (wfm_pvs.DAC,   "Current (A)", "DAC Loopback", "DAC Transition",   "DAC"),    # noqa: E501
+        (wfm_pvs.DCCT1, "Current (A)", "DCCT 1",       "DCCT1 Transition", "DCCT1"),  # noqa: E501
+        (wfm_pvs.DCCT2, "Current (A)", "DCCT 2",       "DCCT2 Transition", "DCCT2"),  # noqa: E501
+        (wfm_pvs.ERR,   "Current (A)", "ERROR",        "Error Transition", "ERROR"),  # noqa: E501
+        (wfm_pvs.REG,   "Current (A)", "REG",          "REG Transition",   "REG"),    # noqa: E501
+        (wfm_pvs.VOLT,  "Voltage (V)", "PS Voltage",   "VOLT Transition",  "VOLT"),   # noqa: E501
+        (wfm_pvs.GND,   "Current (A)", "Ground",       "IGND Transition",  "IGND"),   # noqa: E501
+        (wfm_pvs.SPARE, "Current (A)", "SPARE",        "SPARE Transition", "SPARE")   # noqa: E501
+        # pylint: enable=line-too-long
     ]
 
+
+    channel_flags = getattr(dut.model.jump.waveforms, f"ch{readback_chan}")
+
+    waveform_configs = []
+
+    for pv, y_label, f_title, z_title, label in waveform_metadata:
+        # 2. Check the flag on the specific channel object, not the container
+        # If channel_flags is None (undefined in model), default to True (plot everything)
+        if channel_flags is None or getattr(channel_flags, label, True):
+            data = dut.psc.get_wfm(readback_chan, pv)
+            waveform_configs.append((data, y_label, f_title, z_title, label))
+
     plt.ion()
+
     for data, y_lab, f_title, z_title, label in waveform_configs:
+
+        # Calculate start/end based on THIS signal's jump location
+        t_start = max(0, jump_idx - window)
+        t_end = min(len(data), jump_idx + window)
+
         fig = plt.figure(figsize=(8, 4))
         gs = GridSpec(1, 3, figure=fig)
 
         # Left side: Full waveform overview (2/3 of the width)
         ax_full = fig.add_subplot(gs[0, 0:2])
         ax_full.plot(data)
-        ax_full.set_title(f"Ch{chan} {f_title} Jump Test")
+        ax_full.set_title(f"Ch{readback_chan} {f_title} Jump Test")
         ax_full.set_ylabel(y_lab)
         ax_full.set_xlabel("10KHz Samples")
         ax_full.grid(True)
 
         # Right side: Zoomed transition (1/3 of the width)
         ax_zoom = fig.add_subplot(gs[0, 2])
-        ax_zoom.plot(data[idx_start:idx_end])
+        ax_zoom.plot(data[t_start:t_end])
         ax_zoom.set_title(z_title)
         ax_zoom.set_xlabel("Samples")
         ax_zoom.grid(True)
@@ -178,14 +212,14 @@ def jump_test(dut: DUT,
                          ha="center", bbox=theme)
 
         plt.tight_layout()
-        save_path = os.path.join(dut.raw_data_dir, f"Chan{chan}_"
+        save_path = os.path.join(dut.raw_data_dir, f"Chan{readback_chan}_"
                                  f"{label}_Jump.png")
         fig.savefig(save_path)
         plt.close(fig)
         plt.pause(0.1)
 
     base_style = ctx.styles["Normal"]
-    mstr = f"Jump Test Results: Ch{chan}"
+    mstr = f"Jump Test Results: Ch{readback_chan}"
     paragraph_style = ParagraphStyle(
         "Custom",
         parent=base_style,
@@ -195,7 +229,7 @@ def jump_test(dut: DUT,
         alignment=TA_CENTER,
     )
 
-    mstr = f"Jump Test Results: CH{chan}"
+    mstr = f"Jump Test Results: CH{readback_chan}"
     title_para = Paragraph(mstr, paragraph_style)
 
     # Start the reporting
@@ -205,7 +239,7 @@ def jump_test(dut: DUT,
 
     # REPLACE all manual Image/Spacer lines with this loop:
     for i, (_, _, _, _, label) in enumerate(waveform_configs):
-        img_path = os.path.join(dut.raw_data_dir, f"Chan{chan}_"
+        img_path = os.path.join(dut.raw_data_dir, f"Chan{readback_chan}_"
                                 f"{label}_Jump.png")
 
         if os.path.exists(img_path):
@@ -218,6 +252,6 @@ def jump_test(dut: DUT,
                 section.append(title_para)
                 section.append(Spacer(1, 0.2 * inch))
 
-    print(f"Jump Test for CH{chan} complete. Returning to 0A.")
-    dut.psc.set_dac_setpt(chan, 0)
+    print(f"Jump Test for CH{readback_chan} complete. Returning to 0A.")
+    dut.psc.set_dac_setpt(drive_chan, 0)
     dut.psc.flush_io()
