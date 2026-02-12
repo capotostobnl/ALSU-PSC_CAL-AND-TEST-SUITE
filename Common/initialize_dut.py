@@ -200,7 +200,7 @@ class DUT:
             # Add leading zeroes to psc_sn...
             psc_sn = f"{psc_sn:04d}"
             return psc_sn
-
+        #psc_sn = input('\nEnter S/N')
     def _get_psc_pv_prefix(self) -> str:
         """Prompt for PSC #, to make PV Prefix"""
         while True:

@@ -116,8 +116,10 @@ def ps_regulation_test(dut: DUT,
     while run < 6:
 
         if not sp_sat:
+            dac_rb = dut.psc.get_dac(drive_chan)
             print(f"DAC RB Not satisfied to SP yet...sleeping 5s...Attempt "
                   f"{run+1}")
+            print(f"DAC RB Val: {dac_rb}")
             run += 1
             dut.psc.set_dac_setpt(drive_chan, setpoint)
             sleep(5)
