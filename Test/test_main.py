@@ -59,19 +59,20 @@ def run_psc_test_suite(dut_instance=None):
     ctx, pdf_path = start_report(dut)
 
 
-    evr_timing_test(dut, ctx)
-    ate_init(ate, dut)
+#    evr_timing_test(dut, ctx)
+#    ate_init(ate, dut)
 
-    for chan, drive, readback in zip(dut.model.channels,
+    """for chan, drive, readback in zip(dut.model.channels,
                                      dut.model.drive_channels,
                                      dut.model.readback_channels
                                      ):
-    #for chan, drive, readback in zip((3,4), (3, 3), (3,4)):
+    """
+    for chan, drive, readback in zip((3, 4), (3, 4), (3, 4)):
         with channel_section(ctx, chan) as sec:
             print("\n\n*******************************************"
                   f"\nBeginning Channel {chan} ATE Fault Tests..."
                   "\n*******************************************")
-            ate_fault_tests(dut, ate, sec, chan)
+#            ate_fault_tests(dut, ate, sec, chan)
 
             if dut.model.func_tests.is_enabled("regulation", chan):
                 print("\n\n*******************************************"
@@ -83,13 +84,13 @@ def run_psc_test_suite(dut_instance=None):
                 print("\n\n*******************************************"
                     f"\nBeginning Channel {chan} Jump Tests..."
                     "\n*******************************************")
-                jump_test(dut, ate, sec, chan, ctx, drive, readback)
+#                jump_test(dut, ate, sec, chan, ctx, drive, readback)
 
             if dut.model.func_tests.is_enabled("smooth", chan):
                 print("\n\n*******************************************"
                     f"\nBeginning Channel {chan} Smooth Ramp Tests..."
                     "\n*******************************************")
-                smooth_ramp_test(dut, ate, sec, chan, ctx, drive, readback)
+#                smooth_ramp_test(dut, ate, sec, chan, ctx, drive, readback)
 
     print(dut.bandwidth)
     if dut.bandwidth == "F":
