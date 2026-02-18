@@ -1090,9 +1090,29 @@ MODELS = {
                                 display_name="4CH-MSS-BTA-DA_B4_B7-8",
                                 description="PSC-4CH-MSS-BTA-DA_B4_B7-8",
                                 designation="4CH-MSS-BTA-DA_B4_B7-8_",
-                                channels=(1, 2, 3),
-                                drive_channels=(1, 2, 3),
-                                readback_channels=(1,2, 3),
+                                channels=(1, 2, 3, 4),
+                                drive_channels=(None, 2, 3, 3),
+                                readback_channels=(None, 2, 3, 4),
+                                func_tests=FuncSuite(
+                                    regulation=ChannelValues(
+                                        ch1 = False,
+                                        ch2 = True,
+                                        ch3 = True, 
+                                        ch4 = False
+                                    ),
+                                    jump=ChannelValues(
+                                        ch1 = False,
+                                        ch2 = True,
+                                        ch3 = True, 
+                                        ch4 = True
+                                    ),
+                                        
+                                    smooth=ChannelValues(
+                                        ch1 = False,
+                                        ch2 = True,
+                                        ch3 = True, 
+                                        ch4 = True),
+                                ),
 
 
                           #######################################################################
@@ -1100,51 +1120,84 @@ MODELS = {
                           #######################################################################
                           calibration_parameters=CalibrationParameters(
                           ndcct=2000.0,
-                          burden_resistors=ChannelValues(ch1=None, ch2=5.8, ch3=5.3, ch4=None),
+                          burden_resistors=ChannelValues(ch1=None, ch2=4.6,
+                                                         ch3=5.6, ch4=None),
 
-                          ovc1_threshold=ChannelValues(ch1=None, ch2=325, ch3=325, ch4=None),
-                          ovc2_threshold=ChannelValues(ch1=None, ch2=325, ch3=325, ch4=None),
-                          ovv_threshold=ChannelValues(ch1=None, ch2=30, ch3=80, ch4=None),
+                          ovc1_threshold=ChannelValues(ch1=None, ch2=390, ch3=325, ch4=None),
+                          ovc2_threshold=ChannelValues(ch1=None, ch2=390, ch3=325, ch4=None),
+                          ovv_threshold=ChannelValues(ch1=None, ch2=25, ch3=85, ch4=None),
                           ),
 
                           psc_scale_factors= PSCScaleFactors(
-                                sf_vout=ChannelValues(ch1=None, ch2=-3, ch3=-8, ch4=None),
-                                sf_spare=ChannelValues(ch1=None, ch2=-30, ch3=-32.5, ch4=None),
+                                sf_vout=ChannelValues(ch1=None, ch2=-2.5, ch3=-8.0, ch4=-8.0),
+                                sf_spare=ChannelValues(ch1=None, ch2=-39, ch3=-32.5, ch4=-32.5),
                           ),
                           #######################################################################
                           #      Test                                                           #
                           #######################################################################
                              reg=RegulatorTestParams(
                                 setpoints=(reg_pts := ChannelValues(ch1=None,
-                                                                    ch2=162.5,
+                                                                    ch2=195,
                                                                     ch3=162.5,
                                                                     ch4=None)),
                                 settling_time=10),
                              smooth=SmoothRampTestParams(
-                                 start_setpoints=ChannelValues(ch1=0,
+                                 start_setpoints=ChannelValues(ch1=None,
                                                                ch2=0,
                                                                ch3=0,
-                                                               ch4=0),
+                                                               ch4=None),
                                  end_setpoints=ChannelValues(ch1=None,
-                                                             ch2=320,
-                                                             ch3=320,
+                                                             ch2=285,
+                                                             ch3=285,
                                                              ch4=None),
                                  ramp_rate=ChannelValues(ch1=None,
-                                                         ch2=60,
-                                                         ch3=60,
+                                                         ch2=100,
+                                                         ch3=100,
                                                          ch4=None),
                                  settling_time=10,
-                                 tolerance=0.07),
+                                 tolerance=0.05,
+                                 
+                                 waveforms=ChannelValues(
+                                     ch1=None,            
+                                     ch2=WaveformFlags(), # using defaults
+                                     ch3=WaveformFlags(), # using defaults
+                                     ch4=WaveformFlags(
+                                     DAC=False,
+                                     DCCT1=False,
+                                     DCCT2=False,
+                                     ERROR=False,
+                                     REG=True,
+                                     VOLT=True,
+                                     IGND=False,
+                                     SPARE=True
+                                    )
+                                )
+                            ),
                              jump=JumpTestParams(
                                  start_setpoints=reg_pts,
-                                 step_size=ChannelValues(ch1=None,
+                                 step_size=ChannelValues(ch1=0.5,
                                                          ch2=0.5,
                                                          ch3=0.5,
-                                                         ch4=None),
+                                                         ch4=0.5),
                                  sample_window=500,
-                                 tolerance=0.05
-                              )
-                             ),
+                                 tolerance=0.05,
+                                 waveforms=ChannelValues(
+                                     ch1=None,            
+                                     ch2=WaveformFlags(), # using defaults
+                                     ch3=WaveformFlags(), # using defaults
+                                     ch4=WaveformFlags(
+                                     DAC=False,
+                                     DCCT1=False,
+                                     DCCT2=False,
+                                     ERROR=False,
+                                     REG=True,
+                                     VOLT=True,
+                                     IGND=False,
+                                     SPARE=True
+                                    )
+                                )
+                              ),
+                            ),
 
     "BTA-Q13-Q2-BT6-BT8": PSCModel(
                                 model_id="BTA-Q13-Q2-BT6-BT8",

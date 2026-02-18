@@ -103,8 +103,8 @@ def main():
 
     if sleep_option:
         print(f"Sleeping 20 Minutes")
-        total_seconds = (20*60)
-        #total_seconds = ((15+20)*60)
+        #total_seconds = (20*60)
+        total_seconds = ((15+20)*60)
         print(f"Minutes remaining: {total_seconds/60}")
         while total_seconds >= 0:
                 mins = total_seconds // 60
