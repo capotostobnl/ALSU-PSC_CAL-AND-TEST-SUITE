@@ -24,8 +24,13 @@ plt.rcParams['axes.formatter.limits'] = [-7, 7]
 ########################################################################
 
 
-def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
-                       ctx: ReportContext):
+def ps_regulation_test(dut: DUT,
+                       ate: ATE,
+                       section: list,
+                       chan: int,
+                       ctx: ReportContext,
+                       drive_chan: tuple,
+                       readback_chan: tuple):
     """
     Executes a high-precision stability and regulation test on a single
     PSC channel.
@@ -65,18 +70,19 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
             dut.model specification.
     """
     assert dut.psc is not None
+
     print(f"Preparing PSC Channel {chan} for Regulation test...")
-    dut.psc.set_fault_mask_all(chan, 0)
-    ate.set_ignd_channel(chan)
-    ate.set_ignd_value(0, chan, dut)
+    dut.psc.set_fault_mask_all(drive_chan, 0)
+    ate.set_ignd_channel(drive_chan)
+    ate.set_ignd_value(0, drive_chan, dut)
     print("ATE ignd Set...")
-    dut.psc.set_dac_setpt(1, 0)
+    dut.psc.set_dac_setpt(drive_chan, 0)
 
-    dut.psc.set_rate(chan, dut.model.reg.ramp_rate)
+    dut.psc.set_rate(drive_chan, dut.model.reg.ramp_rate)
 
-    dut.psc.set_dac_setpt(chan, 0)
+    dut.psc.set_dac_setpt(drive_chan, 0)
 
-    for i in range(1, dut.num_channels+1):
+    for i in dut.model.channels:
         dut.psc.set_fault_mask_all(chan, 0)
         dut.psc.set_power_on1(i, 1)
         dut.psc.set_enable_on2(i, 1)
@@ -84,15 +90,15 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
         dut.psc.set_park(i, 0)
         dut.psc.set_dac_setpt(i, 0)
 
-    sleep(0.2)   # optional short slowdown
+    sleep(0.2)
 
     # Look up the current setpoint in the class by channel
-    setpoint = getattr(dut.model.reg.setpoints, f"ch{chan}")
-    print(f"Model: {dut.model.display_name} | Chan: {chan} | "
+    setpoint = getattr(dut.model.reg.setpoints, f"ch{drive_chan}")
+    print(f"Model: {dut.model.display_name} | Chan: {readback_chan} | "
           f"setpoint: {setpoint}A")
 
-    dut.psc.set_dac_setpt(chan, setpoint)
-    print(f"Chan: {chan}, setpoint: {setpoint}")
+    dut.psc.set_dac_setpt(drive_chan, setpoint)
+    print(f"Chan: {drive_chan}, setpoint: {setpoint}")
     print("PSC rate, DAC setpoint, Enable, Park, and Power bits set...")
 
     settling_time = getattr(dut.model.reg, 'settling_time')
@@ -103,23 +109,50 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
     interval = dut.model.reg.sample_interval
     tolerance = dut.model.reg.tolerance
 
+    run = 0
+    
+    sp_sat = False
+
+    while run < 6:
+
+        if not sp_sat:
+            dac_rb = dut.psc.get_dac(drive_chan)
+            print(f"DAC RB Not satisfied to SP yet...sleeping 5s...Attempt "
+                  f"{run+1}")
+            print(f"DAC RB Val: {dac_rb}")
+            run += 1
+            dut.psc.set_dac_setpt(drive_chan, setpoint)
+            sleep(5)
+
+            dac_rb = dut.psc.get_dac(drive_chan)
+            sp_sat = (setpoint - 0.05) < dac_rb < (setpoint + 0.05)
+            sleep(2)
+
+        elif sp_sat:
+            print("SP Satisfied...continuing...")
+            break
+    
+    if not sp_sat: 
+        raise RuntimeError("DAC RB Unable to be satisfied after 6 attempts! Exiting!")
+    run = 0
+    
     # Collect 1 minute of data:
     collection_time = samples * interval
     print(f"Preparing to collect {collection_time} seconds of data "
-          f"for Channel {chan}")
+          f"for Channel {readback_chan}")
     loopback_rb = []
     dcct1_rb = []
     dcct2_rb = []
     f, ax = plt.subplots(3, 1, figsize=(6, 9.5))
     plt.ion()
     print("*******************************************\n")
-    print(f"Channel {chan}: ")
+    print(f"Channel {readback_chan}: ")
     for i in range(0, samples):
-        print(f"Collecting Regulation Data for Channel {chan} "
+        print(f"Collecting Regulation Data for Channel {readback_chan} "
               f"datapoint {i+1} of {samples}...")
-        v_dac = dut.psc.get_dac(chan)
-        v_dcct1 = dut.psc.get_dcct1(chan)
-        v_dcct2 = dut.psc.get_dcct2(chan)
+        v_dac = dut.psc.get_dac(readback_chan)
+        v_dcct1 = dut.psc.get_dcct1(readback_chan)
+        v_dcct2 = dut.psc.get_dcct2(readback_chan)
         loopback_rb.append(v_dac)
         dcct1_rb.append(v_dcct1)
         dcct2_rb.append(v_dcct2)
@@ -157,7 +190,7 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
 
     # Generate and save all three plots using the helper function
     for data, avg, title, label in plot_configs:
-        save_path = os.path.join(dut.raw_data_dir, f"Chan{chan}_"
+        save_path = os.path.join(dut.raw_data_dir, f"Chan{readback_chan}_"
                                  f"{label}_Stability.png")
         _save_stability_plot(
             data=data,
@@ -179,7 +212,7 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
 
     # 1. Generate and save the physical PNG files
     for data, avg, title, label in plot_configs:
-        save_path = os.path.join(dut.raw_data_dir, f"Chan{chan}_"
+        save_path = os.path.join(dut.raw_data_dir, f"Chan{readback_chan}_"
                                  f"{label}_Stability.png")
         _save_stability_plot(
             data=data, avg=avg, target=setpoint, tolerance=tolerance,
@@ -206,8 +239,8 @@ def ps_regulation_test(dut: DUT, ate: ATE, section: list, chan: int,
     # This is the "Title Loop" fix:
     # Use the same 'label' keys to pull the images into the PDF
     for _, _, _, label in plot_configs:
-        img_path = os.path.join(dut.raw_data_dir, f"Chan{chan}_{label}"
-                                "_Stability.png")
+        img_path = os.path.join(dut.raw_data_dir, f"Chan{readback_chan}"
+                                f"_{label}_Stability.png")
         section.append(Image(img_path, 7 * inch, 3 * inch))
         section.append(Spacer(1, 0.1 * inch))
 

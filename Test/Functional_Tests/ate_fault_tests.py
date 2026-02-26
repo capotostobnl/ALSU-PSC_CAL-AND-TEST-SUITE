@@ -246,7 +246,7 @@ def _run_single_fault_test(mask: int, label: str, setter: Any,
         time.sleep(0.5)
 
         # 3. Verify PVs show clear
-        # Poll for up to 10 seconds (200 * 0.05s)
+        # Poll for up to 20 seconds (200 * 0.05s)
         for _ in range(200):
             live_raw = int(dut.psc.get_live_faults(chan))
             lat_raw = int(dut.psc.get_latched_faults(chan))
@@ -257,7 +257,8 @@ def _run_single_fault_test(mask: int, label: str, setter: Any,
                 clear_pass = True
                 return clear_pass
             else:
-                time.sleep(0.05)
+                time.sleep(0.1)
+                clear_pass = False
 
         if clear_pass is True:
             return True

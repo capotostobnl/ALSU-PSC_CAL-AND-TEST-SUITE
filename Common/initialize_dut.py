@@ -45,7 +45,36 @@ class DUT:
     model: PSCModel = field(init=False)
 
     # --- filesystem / run info ---
-    report_dir: str = field(init=False, default="")
+    # We dynamically find the project root relative to this file
+    _project_root: str = field(init=False)
+    _data_root: str = field(init=False)
+
+    def __post_init__(self):
+        """Initialize project-relative paths after the object is created."""
+        # 1. Start at Common/initialize_dut.py
+        this_file_path = os.path.abspath(__file__)
+
+        # 2. Go up one level to get to the project root
+        #    (ALSU-PSC_CAL-AND-TEST-SUITE)
+        self._project_root = os.path.dirname(os.path.dirname(this_file_path))
+
+        # 3. Anchor our data folder to the project root
+        self._data_root = os.path.join(self._project_root, "Test_And_Cal_Data")
+
+    @property
+    def cal_report_dir(self) -> str:
+        """Returns path and creates Cal_Reports ONLY when accessed."""
+        path = os.path.join(self._data_root, "Cal_Reports")
+        os.makedirs(path, exist_ok=True)
+        return path
+
+    @property
+    def test_report_dir(self) -> str:
+        """Returns path and creates Test_Reports ONLY when accessed."""
+        path = os.path.join(self._data_root, "Test_Reports")
+        os.makedirs(path, exist_ok=True)
+        return path
+
     raw_data_dir: str = field(init=False, default="")
     dir_timestamp: str = field(init=False, default="")
 
@@ -78,11 +107,11 @@ class DUT:
         # Get PSC Model from psc_models.py Function
         self.model = get_psc_model_from_user(self.num_channels)
 
-        # Create directory structure...
-        self.report_dir = \
-            self.make_report_dir()
+        # Raw Logs are created immediately
+        shipment_folder = os.path.join(self._data_root, "Raw_Logs",
+                                       f"Shipment_{self.shipment_num}")
         self.raw_data_dir, self.dir_timestamp = \
-            self.make_rawdata_subdir()
+            self.make_rawdata_subdir(shipment_folder)
 
     def query_psc_config(self) -> None:
         """Get values from PSC about unit type from PVs"""
@@ -118,31 +147,16 @@ class DUT:
                                   f"{self.pv_prefix}. Check EEPROM is "
                                   "Configured, PSC is connected. ")
 
-    def make_report_dir(self, base_dir="."):
-        """Create shipment directory"""
-
-        dir_name = f"Shipment #{self.shipment_num}"
-        report_dir = os.path.join(base_dir, dir_name)
-        os.makedirs(report_dir, exist_ok=True)
-        return report_dir
-
-    def make_rawdata_subdir(self) -> Tuple[str, str]:
-        """Create a subdir under report_dir"""
-
-        # Create timestamp...
-        dir_timestamp = datetime.now().strftime(
-            "%m-%d-%y_%H-%M")
-
-        # build dir name...
+    def make_rawdata_subdir(self, parent_dir: str) -> Tuple[str, str]:
+        """Create a timestamped subdir for raw diagnostic data."""
+        dir_timestamp = datetime.now().strftime("%m-%d-%y_%H-%M")
         subdir_name = (f"{self.num_channels}ch_{self.resolution[:2]}"
                        f"{self.bandwidth[:1]}_SN{self.psc_sn}_RawData_"
                        f"{dir_timestamp}")
-        raw_data_dir = os.path.join(
-            self.report_dir, subdir_name)
 
-        os.makedirs(raw_data_dir, exist_ok=True)
-
-        return raw_data_dir, dir_timestamp
+        raw_data_path = os.path.join(parent_dir, subdir_name)
+        os.makedirs(raw_data_path, exist_ok=True)
+        return raw_data_path, dir_timestamp
 
     def _get_shipment_num(self) -> int:
         """Prompt for the shipment number"""
@@ -186,7 +200,7 @@ class DUT:
             # Add leading zeroes to psc_sn...
             psc_sn = f"{psc_sn:04d}"
             return psc_sn
-
+        #psc_sn = input('\nEnter S/N')
     def _get_psc_pv_prefix(self) -> str:
         """Prompt for PSC #, to make PV Prefix"""
         while True:

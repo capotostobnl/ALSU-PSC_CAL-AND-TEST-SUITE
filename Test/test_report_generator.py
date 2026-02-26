@@ -133,6 +133,7 @@ def _cover_table(dut: DUT) -> Table:
     tdata = [
         ["PSC Functional Test Results", 0],
         ["Power Supply Controller Configuration", 0],
+        ["Description", dut.model.description],
         ["Serial Number", dut.psc_sn],
         ["Number of Channels", dut.num_channels],
         ["Resolution", dut.resolution],
@@ -140,7 +141,7 @@ def _cover_table(dut: DUT) -> Table:
         ["Polarity", dut.polarity],
     ]
 
-    row_h = [0.4*inch, 0.35*inch, *(0.27*inch for _ in range(5))]
+    row_h = [0.4*inch, 0.35*inch, *(0.27*inch for _ in range(6))]
 
     col_h = [3*inch, 3*inch]
 
@@ -150,11 +151,11 @@ def _cover_table(dut: DUT) -> Table:
             ("ALIGN", (0, 0), (1, 1), "CENTER"),
             ("FONTSIZE", (0, 0), (1, 0), 16),
             ("FONTSIZE", (0, 1), (1, 1), 14),
-            ("VALIGN", (0, 0), (1, 6), "MIDDLE"),
+            ("VALIGN", (0, 0), (1, 7), "MIDDLE"), 
             ("LINEABOVE", (0, 1), (1, 2), 2, colors.black),
             ("BACKGROUND", (0, 0), (1, 1), colors.lemonchiffon),
-            ("BACKGROUND", (0, 2), (0, 6), colors.lightblue),
-            ("FONTSIZE", (0, 1), (1, 6), 12),
+            ("BACKGROUND", (0, 2), (0, 7), colors.lightblue),
+            ("FONTSIZE", (0, 1), (1, 7), 12),
             ("GRID", (0, 0), (-1, -1), 1, colors.black),
             ("BOX", (0, 0), (-1, -1), 2, colors.black),
         ]
@@ -196,9 +197,9 @@ def start_report(dut: DUT) -> tuple:
               elements added.
             - The absolute file path to the target PDF file.
     """
-    base_dir = dut.report_dir
+
     pdf_name = _make_filename(dut)
-    pdf_path = os.path.abspath(os.path.join(base_dir, pdf_name))
+    pdf_path = os.path.join(dut.test_report_dir, pdf_name)
 
     ctx = _create_context(pdf_path)
 
@@ -229,6 +230,22 @@ def finalize_report(ctx: ReportContext) -> str:
     Returns:
         str: The absolute filesystem path where the PDF was successfully saved.
     """
+def finalize_report(ctx: ReportContext) -> str:
+    """
+    Generates and saves the final PDF report to disk.
+    """
+    # --- UPDATED DEBUG START ---
+    def check_for_int(element_list, location_desc):
+        for i, element in enumerate(element_list):
+            if isinstance(element, int):
+                print(f"CRITICAL ERROR: Found integer '{element}' at index {i} in {location_desc}!")
+            elif isinstance(element, KeepTogether):
+                # Recursively check inside KeepTogether buckets
+                check_for_int(element._content, f"{location_desc} -> KeepTogether")
+
+    check_for_int(ctx.elements, "ctx.elements")
+    # --- DEBUG END ---
+
     pdf_path = ctx.doc.filename
     ctx.doc.build(ctx.elements)
     return pdf_path

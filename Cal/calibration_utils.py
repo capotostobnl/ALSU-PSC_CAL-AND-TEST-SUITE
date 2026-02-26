@@ -9,7 +9,8 @@ from time import sleep
 from typing import TYPE_CHECKING
 
 # IMPORTS: Get the data structure from the analysis module
-from cal_analysis import TestPoint
+
+from Cal.cal_analysis import TestPoint
 
 if TYPE_CHECKING:
     from Common.initialize_dut import DUT
@@ -27,26 +28,29 @@ DMM_HIGH_RANGE_THRESHOLD = 0.11
 
 def configure_channel_settings(
     dut: DUT,
-    psc_config: PSCModel,
     chan: int
 ) -> None:
     """Applies all scale factors and thresholds to the PSC."""
-    p_scale = psc_config.get_p_scale_factor(chan)
-    dcct_val = (psc_config.sf_dcct_scale
-                if psc_config.sf_dcct_scale else p_scale)
+
+    scales = dut.model.psc_scale_factors
+    faults = dut.model.psc_fault_thresholds_limits
+
+    p_scale = dut.model.calc.get_p_scale_factor(chan)
+    dcct_val = (scales.sf_dcct_scale
+                if scales.sf_dcct_scale else p_scale)
 
     dut.psc.set_sf_dcct_scale(chan, dcct_val)
-    dut.psc.set_sf_ramp_rate(chan, psc_config.sf_ramp_rate)
-    dut.psc.set_sf_ignd(chan, psc_config.sf_ignd)
-    dut.psc.set_sf_regulator(chan, psc_config.sf_regulator)
-    dut.psc.set_sf_error(chan, psc_config.sf_error)
-    dut.psc.set_sf_vout(chan, getattr(psc_config.sf_vout, f"ch{chan}"))
-    dut.psc.set_sf_spare(chan, getattr(psc_config.sf_spare, f"ch{chan}"))
+    dut.psc.set_sf_ramp_rate(chan, scales.sf_ramp_rate)
+    dut.psc.set_sf_ignd(chan, scales.sf_ignd)
+    dut.psc.set_sf_regulator(chan, scales.sf_regulator)
+    dut.psc.set_sf_error(chan, scales.sf_error)
+    dut.psc.set_sf_vout(chan, scales.sf_vout.get(chan - 1))
+    dut.psc.set_sf_spare(chan, scales.sf_spare.get(chan - 1))
 
-    # Apply Thresholds dynamically
-    for attr in ["err1_threshold", "err2_threshold", "ignd_threshold"]:
-        method_name = f"set_threshold_{attr.split('_', maxsplit=1)[0]}"
-        getattr(dut.psc, method_name)(chan, getattr(psc_config, attr))
+    # Apply Thresholds
+    dut.psc.set_threshold_err1(chan, faults.err1_threshold)
+    dut.psc.set_threshold_err2(chan, faults.err2_threshold)
+    dut.psc.set_threshold_ignd(chan, faults.ignd_threshold)
 
     # Fault Limits
     fault_limits = {
@@ -64,7 +68,7 @@ def configure_channel_settings(
         "flt_heartbeat_cnt": "set_count_limit_heartbeat"
     }
     for attr, method in fault_limits.items():
-        val = getattr(psc_config, attr)
+        val = getattr(faults, attr)
         getattr(dut.psc, method)(chan, val)
 
     dut.psc.set_op_mode(chan, 3)
@@ -80,16 +84,19 @@ def measure_testpoints(
     sp: float,
     chan: int,
     dmm_offset: float,
-    verbose: bool = False
+    verbose: bool = False,
+    verification: bool = False
 ) -> TestPoint:
     """
     Performs a single test point measurement with iterative DAC adjustment.
     """
-    ate_obj.set_cal_dac_w_os(current)
+    for _ in range(5):
+        ate_obj.set_cal_dac_w_os(current)
+        sleep(0.5)
 
-    full_scale = psc_config.get_current_full_scale(chan)
-    p_scale = psc_config.get_p_scale_factor(chan)
-    s_scale = psc_config.get_s_scale_factor(chan)
+    full_scale = psc_config.calc.get_current_full_scale(chan)
+    p_scale = psc_config.calc.get_p_scale_factor(chan)
+    s_scale = psc_config.calc.get_s_scale_factor(chan)
 
     iteration = 0
     psc_hw.set_dac_setpt(chan, sp)
@@ -109,12 +116,22 @@ def measure_testpoints(
         psc_hw.set_dac_setpt(chan, sp)
         sleep(SETTLING_TIME_SEC)
         err = psc_hw.get_error_i(chan)
+
         iteration += 1
+    
+    if iteration == MAX_DAC_ITERATIONS+1:
+        print("Calibration failed. Could not null error after "
+              f"{MAX_DAC_ITERATIONS} attempts. Try again.")
+        #sys.exit()
 
+    rb = psc_config.calibration_parameters.burden_resistors.get(chan - 1)
     dmm_val = dmm_obj.read_value() - dmm_offset
+    ndcct = psc_config.calibration_parameters.ndcct
 
+    itest = dmm_val * ndcct
+    
     return TestPoint(
-        dmm_current=dmm_val * s_scale * p_scale,
+        dmm_current=itest,
         dac_setpoint=dac,
         dcct1=psc_hw.get_dcct1(chan),
         dcct2=psc_hw.get_dcct2(chan),

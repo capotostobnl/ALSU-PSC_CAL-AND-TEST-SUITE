@@ -24,8 +24,14 @@ plt.rcParams['axes.formatter.limits'] = [-7, 7]
 ########################################################################
 
 
-def smooth_ramp_test(dut: DUT, ate: ATE, section: list,
-                     chan: int, ctx: ReportContext):
+def smooth_ramp_test(dut: DUT,
+                     ate: ATE,
+                     section: list,
+                     chan: int,
+                     ctx: ReportContext,
+                     drive_chan: tuple,
+                     readback_chan: tuple
+                     ):
     """
     Executes a high-speed waveform capture and analysis during a smooth
     current ramp.
@@ -76,48 +82,79 @@ def smooth_ramp_test(dut: DUT, ate: ATE, section: list,
     sleep(3)
 
     wfm_pvs = dut.psc.WfmPV
-    dut.psc.set_op_mode(chan, 0)  # Set PS Mode to SMOOTH
+    dut.psc.set_op_mode(drive_chan, 0)  # Set PS Mode to SMOOTH
     sleep(1)
 
     ramp_params = dut.model.smooth
-    start_sp = getattr(ramp_params.start_setpoints, f"ch{chan}")
-    end_sp = getattr(ramp_params.end_setpoints, f"ch{chan}")
-    ramp_rate = getattr(ramp_params.ramp_rate, f"ch{chan}")
+    start_sp = getattr(ramp_params.start_setpoints, f"ch{drive_chan}")
+    end_sp = getattr(ramp_params.end_setpoints, f"ch{drive_chan}")
+    ramp_rate = getattr(ramp_params.ramp_rate, f"ch{drive_chan}")
     tolerance = ramp_params.tolerance
     settling_time = ramp_params.settling_time
 
-    dut.psc.set_rate(chan, ramp_rate)
+    dut.psc.set_rate(drive_chan, ramp_rate)
     print(f"Moving to Start: {start_sp}A")
-    dut.psc.set_dac_setpt(chan, start_sp)
-    sleep(settling_time)  # Allow initial move to settle
+    dut.psc.set_dac_setpt(drive_chan, start_sp)
+
+    timeout = 30
+    elapsed = 0
+
+    # Move DAC Setpt to some non-zero value to prevent hanging on bug...
+    dut.psc.set_dac_setpt(drive_chan, 1)
+    sleep(0.5)
+
+    while abs(dut.psc.get_dac(drive_chan) - start_sp) > 0.5:  # 0.5A tolerance
+        if elapsed >= timeout:
+            print("Timeout reached! PS failed to reach start setpoint.Exiting")
+            exit()
+
+        print("Waiting for stable baseline... Current: "
+              f"{dut.psc.get_dac(drive_chan)}A")
+        dut.psc.set_dac_setpt(drive_chan, start_sp)
+        print(f"Setpoint set to: Channel: {chan}, SP: {start_sp}")
+        sleep(1)
+        elapsed += 1
+
+    print(f"Baseline reached. Settling for {settling_time}s...")
+    sleep(settling_time)
+
     print(f"Ramping: {start_sp}A -> {end_sp}A @ {ramp_rate}A/s")
-    dut.psc.set_dac_setpt(chan, end_sp)
+    dut.psc.set_dac_setpt(drive_chan, end_sp)
 
     sleep(2)  # Wait 2 Seconds before taking Snapshot
-    print(f"DAC SP: {end_sp}\nDAC RB: {dut.psc.get_dac(chan)}(Ramping!)")
-    dut.psc.user_shot(chan)  # Take the Snapshot.
+    print(f"DAC SP: {end_sp}\nDAC RB: {dut.psc.get_dac(drive_chan)}(Ramping!)")
+    dut.psc.user_shot(readback_chan)  # Take the Snapshot.
     sleep(2)
-    while dut.psc.is_user_trig_active(chan) > 0:
+    while dut.psc.is_user_trig_active(readback_chan) > 0:
         sleep(1)
         print("Wating for Smooth Snapshot data.....")
     sleep(6)
-    print(f"DAC SP: {end_sp} \nDAC RB: {dut.psc.get_dac(chan)}")
+    print(f"DAC SP: {end_sp} \nDAC RB: {dut.psc.get_dac(drive_chan)}")
 
     # Waveform configuration list
-    waveform_configs = [
+    waveform_metadata = [
         # pylint: disable=line-too-long
-        # DATA                               Y_LABEL        TITLE           LABEL        # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.DAC),   "Current (A)", "DAC Loopback", "DAC"),    # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.DCCT1), "Current (A)", "DCCT 1",       "DCCT1"),  # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.DCCT2), "Current (A)", "DCCT 2",       "DCCT2"),  # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.ERR),   "Current (A)", "ERROR",        "ERROR"),  # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.REG),   "Current (A)", "REG",          "REG"),    # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.VOLT),  "Voltage (V)", "PS Voltage",   "VOLT"),   # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.GND),   "Current (A)", "Ground",       "IGND"),   # noqa: E501
-        (dut.psc.get_wfm(chan, wfm_pvs.SPARE), "Current (A)", "SPARE",        "SPARE")   # noqa: E501
+        # DATA           Y_LABEL       TITLE            LABEL     # noqa: E501
+        (wfm_pvs.DAC,   "Current (A)", "DAC Loopback", "DAC"),    # noqa: E501
+        (wfm_pvs.DCCT1, "Current (A)", "DCCT 1",       "DCCT1"),  # noqa: E501
+        (wfm_pvs.DCCT2, "Current (A)", "DCCT 2",       "DCCT2"),  # noqa: E501
+        (wfm_pvs.ERR,   "Current (A)", "ERROR",        "ERROR"),  # noqa: E501
+        (wfm_pvs.REG,   "Current (A)", "REG",          "REG"),    # noqa: E501
+        (wfm_pvs.VOLT,  "Voltage (V)", "PS Voltage",   "VOLT"),   # noqa: E501
+        (wfm_pvs.GND,   "Current (A)", "Ground",       "IGND"),   # noqa: E501
+        (wfm_pvs.SPARE, "Current (A)", "SPARE",        "SPARE")   # noqa: E501
         # pylint: enable=line-too-long
     ]
 
+    channel_flags = getattr(dut.model.smooth.waveforms, f"ch{chan}")
+
+    waveform_configs = []
+    for pv, y_label, title, label in waveform_metadata:
+        # 2. Check the flag on the specific channel object, not the container
+        # If channel_flags is None (undefined in model), default to True (plot everything)
+        if channel_flags is None or getattr(channel_flags, label, True):
+            data = dut.psc.get_wfm(chan, pv)
+            waveform_configs.append((data, y_label, title, label))
     plt.ion()
 
     for data, y_label, title, label in waveform_configs:
@@ -181,3 +218,4 @@ def smooth_ramp_test(dut: DUT, ate: ATE, section: list,
             section.append(Spacer(1, 0.2 * inch))
 
     dut.psc.set_dac_setpt(chan, 0)
+    return
